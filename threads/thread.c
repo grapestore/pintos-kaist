@@ -28,6 +28,10 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
+/* sleep list */
+static struct list sleep_list;
+static int64_t next_tick_to_awake;
+
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -108,6 +112,7 @@ thread_init (void) {
 	/* Init the globla thread context */
 	lock_init (&tid_lock);
 	list_init (&ready_list);
+	list_init (&sleep_list);
 	list_init (&destruction_req);
 
 	/* Set up a thread structure for the running thread. */
@@ -587,4 +592,95 @@ allocate_tid (void) {
 	lock_release (&tid_lock);
 
 	return tid;
+}
+
+/* sleep sort a= current b=update list element*/
+bool thread_compare_awake(const struct list_elem *a,
+						  const struct list_elem *b,
+						  void *aux UNUSED)
+{
+	return list_entry(a, struct thread, elem)->awake_time < list_entry(b, struct thread, elem)->awake_time;
+}
+
+/* sleep function */
+void thread_sleep(int64_t ticks)
+{
+
+	enum intr_level old_level;
+	old_level = intr_disable();
+
+	struct thread *curr = thread_current();
+	ASSERT(!intr_context());
+	ASSERT(curr != idle_thread);
+	
+
+	/* FIFO push back sleep list */
+	//update_next_tick_to_awake(curr->awake_time = ticks);
+	//list_push_back(&sleep_list, &curr->elem);
+
+	/* sort sleep list */
+	curr->awake_time = ticks;
+	//update_next_tick_to_awake(curr-s>awake_time = ticks);
+	list_insert_ordered(&sleep_list, &curr->elem, thread_compare_awake, NULL);
+	
+	thread_block();
+	intr_set_level(old_level);
+}
+
+/* awake function */
+void thread_awake(int64_t wakeup_tick)
+{
+	next_tick_to_awake = INT64_MAX;
+	struct list_elem *e;
+	
+
+	/* not sort or sort sleep list */
+	e = list_begin(&sleep_list);
+	while (e != list_end(&sleep_list))
+	{
+		struct thread *t = list_entry(e, struct thread, elem);
+
+		if (wakeup_tick >= t->awake_time)
+		{
+			e = list_remove(&t->elem);
+			thread_unblock(t);
+		}
+		else
+		{
+			//e = list_next(e);
+			//update_next_tick_to_awake(t->awake_time);
+			break;
+		}
+		
+	}
+
+	// for(e = list_begin(&sleep_list); e != list_end(&sleep_list); e = list_next(e)){
+	// 	struct thread *t = list_entry(e, struct thread, elem);
+	// 	if (wakeup_tick >= t->awake_time)
+	// 	{
+	// 		e = list_remove(&t->elem);
+	// 		thread_unblock(t);
+	// 	}
+	// 	else break;
+
+	// }
+}
+
+void update_next_tick_to_awake(int64_t ticks)
+{
+	next_tick_to_awake = (next_tick_to_awake > ticks) ? ticks : next_tick_to_awake;
+}
+
+int64_t get_next_tick_to_awake(void)
+{
+	return next_tick_to_awake;
+}
+
+/* sleep list first awake time return */
+int64_t first_next_tick_to_awake(void)
+{
+	struct list_elem *e;
+	e = list_begin(&sleep_list);
+	struct thread *t = list_entry(e, struct thread, elem);
+	return t->awake_time;
 }
