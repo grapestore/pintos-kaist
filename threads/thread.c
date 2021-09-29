@@ -414,6 +414,7 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
 	t->priority = priority;
 	t->magic = THREAD_MAGIC;
+	
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
@@ -654,16 +655,6 @@ void thread_awake(int64_t wakeup_tick)
 		
 	}
 
-	// for(e = list_begin(&sleep_list); e != list_end(&sleep_list); e = list_next(e)){
-	// 	struct thread *t = list_entry(e, struct thread, elem);
-	// 	if (wakeup_tick >= t->awake_time)
-	// 	{
-	// 		e = list_remove(&t->elem);
-	// 		thread_unblock(t);
-	// 	}
-	// 	else break;
-
-	// }
 }
 
 void update_next_tick_to_awake(int64_t ticks)
