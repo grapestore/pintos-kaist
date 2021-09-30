@@ -154,14 +154,10 @@ int thread_get_load_avg (void);
 
 void do_iret (struct intr_frame *tf);
 
-bool thread_compare_priority (const struct list_elem *a_, const struct list_elem *b_,
-            void *aux UNUSED);
+bool thread_compare_priority (const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED); // by. ASLM
 
-bool sema_compare_priority (const struct list_elem *a_, const struct list_elem *b_,
-            void *aux UNUSED);
+bool sema_compare_priority (const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);  // by. ASLM
 
-void thread_preemption(void);
-
-
+void thread_preemption(void); // by. ASLM
 
 #endif /* threads/thread.h */

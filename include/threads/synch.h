@@ -39,7 +39,7 @@ void cond_signal (struct condition *, struct lock *);
 void cond_broadcast (struct condition *, struct lock *);
 
 /* One semaphore in a list. */
-struct semaphore_elem {
+struct semaphore_elem { // sharing for thread.c  by. ASLM  
 	struct list_elem elem;              /* List element. */
 	struct semaphore semaphore;         /* This semaphore. */
 };
