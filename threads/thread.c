@@ -198,6 +198,8 @@ thread_create (const char *name, int priority,
 	/* Add to run queue. */
 	thread_unblock (t);
 
+	thread_preemption();
+
 	return tid;
 }
 
@@ -231,7 +233,8 @@ thread_unblock (struct thread *t) {
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	list_push_back (&ready_list, &t->elem);
+	// list_push_back (&ready_list, &t->elem);
+    list_insert_ordered(&ready_list, &t->elem, thread_compare_priority, NULL);
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
 }
@@ -294,7 +297,8 @@ thread_yield (void) {
 
 	old_level = intr_disable ();
 	if (curr != idle_thread)
-		list_push_back (&ready_list, &curr->elem);
+		// list_push_back (&ready_list, &curr->elem);
+		list_insert_ordered(&ready_list, &curr->elem, thread_compare_priority, NULL);
 	do_schedule (THREAD_READY);
 	intr_set_level (old_level);
 }
@@ -303,6 +307,7 @@ thread_yield (void) {
 void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;
+	thread_preemption();
 }
 
 /* Returns the current thread's priority. */
@@ -589,6 +594,8 @@ bool thread_compare_awake(const struct list_elem *a,
 	return list_entry(a, struct thread, elem)->awake_time < list_entry(b, struct thread, elem)->awake_time;
 }
 
+
+
 /* sleep function */
 void thread_sleep(int64_t ticks)
 {
@@ -617,7 +624,7 @@ void thread_sleep(int64_t ticks)
 /* awake function */
 void thread_awake(int64_t wakeup_tick)
 {
-	next_tick_to_awake = INT64_MAX;
+	//next_tick_to_awake = INT64_MAX;
 	struct list_elem *e;
 	
 
@@ -660,4 +667,32 @@ int64_t first_next_tick_to_awake(void)
 	e = list_begin(&sleep_list);
 	struct thread *t = list_entry(e, struct thread, elem);
 	return t->awake_time;
+}
+
+void thread_preemption(void)
+{
+	if(!list_empty(&ready_list) && thread_current()->priority < list_entry(list_front(&ready_list), struct thread, elem)->priority ){
+		thread_yield();
+	}
+}
+
+bool thread_compare_priority (const struct list_elem *a_, const struct list_elem *b_,
+            void *aux UNUSED) 
+{
+  const struct thread *a = list_entry (a_, struct thread, elem);
+  const struct thread *b = list_entry (b_, struct thread, elem);
+  
+  return a->priority > b->priority;
+}
+
+bool sema_compare_priority (const struct list_elem *a_, const struct list_elem *b_,
+            void *aux UNUSED) 
+{
+  const struct semaphore_elem *sa = list_entry (a_, struct semaphore_elem, elem);
+  const struct semaphore_elem *sb = list_entry (b_, struct semaphore_elem, elem);
+
+  const struct list *a =  &(sa->semaphore.waiters);
+  const struct list *b =  &(sb->semaphore.waiters);
+
+  return list_entry (list_begin(a) , struct thread, elem)->priority > list_entry (list_begin(b) , struct thread, elem)->priority;
 }
