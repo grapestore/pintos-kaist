@@ -91,10 +91,14 @@ struct thread {
 	enum thread_status status;          /* Thread state. */
 	char name[16];                      /* Name (for debugging purposes). */
 	int priority;                       /* Priority. */
+	int ori_priority;                   /* Original priority by. ASLM */
 	int64_t awake_time;
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
+	struct lock *lock_list;             /* Have lock list */
+	struct list donations;              /* Donation list*/
+	struct list_elem donation_elem;     /* Donation element list*/
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
@@ -158,6 +162,9 @@ bool thread_compare_priority (const struct list_elem *a_, const struct list_elem
 
 bool sema_compare_priority (const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);  // by. ASLM
 
+bool thread_compare_donate_priority (const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);  // by. ASLM
+
 void thread_preemption(void); // by. ASLM
+void refresh_priority(void); //by. ASLM
 
 #endif /* threads/thread.h */

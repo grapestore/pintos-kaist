@@ -306,7 +306,9 @@ thread_yield (void) {
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) {
-	thread_current ()->priority = new_priority;
+	thread_current ()->ori_priority = new_priority;
+
+	refresh_priority();
 	thread_preemption(); // by. ASLM
 }
 
@@ -404,7 +406,11 @@ init_thread (struct thread *t, const char *name, int priority) {
 	strlcpy (t->name, name, sizeof t->name);
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
 	t->priority = priority;
+	t->ori_priority = priority;
+	t->lock_list = NULL;
 	t->magic = THREAD_MAGIC;
+
+	list_init (&t->donations);
 	
 }
 
@@ -695,4 +701,54 @@ bool sema_compare_priority (const struct list_elem *a_, const struct list_elem *
   const struct list *b =  &(sb->semaphore.waiters);
 
   return list_entry (list_begin(a) , struct thread, elem)->priority > list_entry (list_begin(b) , struct thread, elem)->priority;
+}
+
+bool thread_compare_donate_priority (const struct list_elem *a_, const struct list_elem *b_, // by. ASLM
+            void *aux UNUSED) 
+{
+	return list_entry (a_, struct thread, donation_elem) -> priority > list_entry (b_, struct thread, donation_elem) -> priority;
+}
+
+void donate_priority (void) // by. ASLM
+{
+	int depth;
+	struct thread *curr = thread_current ();
+
+	for (depth = 0; depth < 8; depth++){
+		if (!curr->lock_list){
+			break;
+		}
+
+		struct thread *holder = curr->lock_list->holder;
+		holder->priority = curr->priority;
+		curr = holder;
+	}
+}
+
+void lock_remove(struct lock * lock){ // by. ASLM  현재 쓰레드의 도네이션 리스트들을 확인하고, lock을 가지고 있다면 리스트에서 제거 해줌.
+	struct list_elem *e;
+	struct thread *curr = thread_current();
+
+	for (e = list_begin(&curr->donations); e != list_end(&curr->donations) ; e = list_next(e)){
+		struct thread *t = list_entry(e, struct thread, donation_elem);
+		if (t->lock_list == lock){
+			list_remove(&t->donation_elem);
+		}
+	}
+}
+
+void refresh_priority (void){ // by. ASLM
+	struct thread *curr = thread_current();
+
+	curr->priority = curr->ori_priority;
+
+	if(!list_empty(&curr->donations)){
+		list_sort(&curr->donations, thread_compare_donate_priority, NULL);
+
+		struct thread *front = list_entry(list_front(&curr->donations), struct thread, donation_elem);
+
+		if(front->priority > curr->priority){
+			curr->priority = front->priority;
+		}
+	}
 }
