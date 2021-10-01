@@ -198,7 +198,7 @@ thread_create (const char *name, int priority,
 	/* Add to run queue. */
 	thread_unblock (t);
 
-	thread_preemption(); // by. ASLM
+	thread_preemption(); 
 
 	return tid;
 }
@@ -234,7 +234,7 @@ thread_unblock (struct thread *t) {
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
 	// list_push_back (&ready_list, &t->elem);
-    list_insert_ordered(&ready_list, &t->elem, thread_compare_priority, NULL); // by. ASLM
+    list_insert_ordered(&ready_list, &t->elem, thread_compare_priority, NULL);
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
 }
@@ -298,7 +298,7 @@ thread_yield (void) {
 	old_level = intr_disable ();
 	if (curr != idle_thread)
 		// list_push_back (&ready_list, &curr->elem);
-		list_insert_ordered(&ready_list, &curr->elem, thread_compare_priority, NULL); // by. ASLM
+		list_insert_ordered(&ready_list, &curr->elem, thread_compare_priority, NULL); 
 	do_schedule (THREAD_READY);
 	intr_set_level (old_level);
 }
@@ -309,7 +309,7 @@ thread_set_priority (int new_priority) {
 	thread_current ()->ori_priority = new_priority;
 
 	refresh_priority();
-	thread_preemption(); // by. ASLM
+	thread_preemption(); 
 }
 
 /* Returns the current thread's priority. */
@@ -407,7 +407,7 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
 	t->priority = priority;
 	t->ori_priority = priority;
-	t->lock_list = NULL;
+	t->wish_lock = NULL;
 	t->magic = THREAD_MAGIC;
 
 	list_init (&t->donations);
@@ -675,14 +675,14 @@ int64_t first_next_tick_to_awake(void)
 	return t->awake_time;
 }
 
-void thread_preemption(void) // by. ASLM
+void thread_preemption(void)
 {
 	if(!list_empty(&ready_list) && thread_current()->priority < list_entry(list_front(&ready_list), struct thread, elem)->priority ){
 		thread_yield();
 	}
 }
 
-bool thread_compare_priority (const struct list_elem *a_, const struct list_elem *b_, // by. ASLM
+bool thread_compare_priority (const struct list_elem *a_, const struct list_elem *b_, 
             void *aux UNUSED) 
 {
   const struct thread *a = list_entry (a_, struct thread, elem);
@@ -691,7 +691,7 @@ bool thread_compare_priority (const struct list_elem *a_, const struct list_elem
   return a->priority > b->priority;
 }
 
-bool sema_compare_priority (const struct list_elem *a_, const struct list_elem *b_, // by. ASLM
+bool sema_compare_priority (const struct list_elem *a_, const struct list_elem *b_, 
             void *aux UNUSED) 
 {
   const struct semaphore_elem *sa = list_entry (a_, struct semaphore_elem, elem);
@@ -703,41 +703,41 @@ bool sema_compare_priority (const struct list_elem *a_, const struct list_elem *
   return list_entry (list_begin(a) , struct thread, elem)->priority > list_entry (list_begin(b) , struct thread, elem)->priority;
 }
 
-bool thread_compare_donate_priority (const struct list_elem *a_, const struct list_elem *b_, // by. ASLM
+bool thread_compare_donate_priority (const struct list_elem *a_, const struct list_elem *b_, 
             void *aux UNUSED) 
 {
 	return list_entry (a_, struct thread, donation_elem) -> priority > list_entry (b_, struct thread, donation_elem) -> priority;
 }
 
-void donate_priority (void) // by. ASLM
+void donate_priority (void) 
 {
 	int depth;
 	struct thread *curr = thread_current ();
 
 	for (depth = 0; depth < 8; depth++){
-		if (!curr->lock_list){
+		if (!curr->wish_lock){
 			break;
 		}
 
-		struct thread *holder = curr->lock_list->holder;
+		struct thread *holder = curr->wish_lock->holder;
 		holder->priority = curr->priority;
 		curr = holder;
 	}
 }
 
-void lock_remove(struct lock * lock){ // by. ASLM  현재 쓰레드의 도네이션 리스트들을 확인하고, lock을 가지고 있다면 리스트에서 제거 해줌.
+void lock_remove(struct lock * lock){ // currunt thread check donation list, if have lock remove in list
 	struct list_elem *e;
 	struct thread *curr = thread_current();
 
 	for (e = list_begin(&curr->donations); e != list_end(&curr->donations) ; e = list_next(e)){
 		struct thread *t = list_entry(e, struct thread, donation_elem);
-		if (t->lock_list == lock){
+		if (t->wish_lock == lock){
 			list_remove(&t->donation_elem);
 		}
 	}
 }
 
-void refresh_priority (void){ // by. ASLM
+void refresh_priority (void){ 
 	struct thread *curr = thread_current();
 
 	curr->priority = curr->ori_priority;
