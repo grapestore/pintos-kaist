@@ -91,12 +91,12 @@ struct thread {
 	enum thread_status status;          /* Thread state. */
 	char name[16];                      /* Name (for debugging purposes). */
 	int priority;                       /* Priority. */
-	int ori_priority;                   /* Original priority by. ASLM */
+	int ori_priority;                   /* Original priority */
 	int64_t awake_time;
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
-	struct lock *lock_list;             /* Have lock list */
+	struct lock *wish_lock;             /* Have lock list */
 	struct list donations;              /* Donation list*/
 	struct list_elem donation_elem;     /* Donation element list*/
 
@@ -158,13 +158,13 @@ int thread_get_load_avg (void);
 
 void do_iret (struct intr_frame *tf);
 
-bool thread_compare_priority (const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED); // by. ASLM
+bool thread_compare_priority (const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED); 
 
-bool sema_compare_priority (const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);  // by. ASLM
+bool sema_compare_priority (const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED); 
 
-bool thread_compare_donate_priority (const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);  // by. ASLM
+bool thread_compare_donate_priority (const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED); 
 
-void thread_preemption(void); // by. ASLM
-void refresh_priority(void); //by. ASLM
+void thread_preemption(void); 
+void refresh_priority(void);
 
 #endif /* threads/thread.h */
