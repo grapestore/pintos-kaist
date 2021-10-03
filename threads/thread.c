@@ -149,6 +149,7 @@ thread_start (void) {
 
 	/* Wait for the idle thread to initialize idle_thread. */
 	sema_down (&idle_started);
+
 }
 
 /* Called by the timer interrupt handler at each timer tick.
@@ -208,7 +209,6 @@ thread_create (const char *name, int priority,
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 
-	list_push_back (&all_list, &t->allelem);
 
 
 	/* Add to run queue. */
@@ -448,7 +448,8 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->magic = THREAD_MAGIC;
 
 	list_init (&t->donations);
-	
+	list_push_back (&all_list, &t->allelem);
+
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
