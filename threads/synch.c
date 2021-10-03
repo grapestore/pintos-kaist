@@ -192,6 +192,12 @@ lock_acquire (struct lock *lock) {
 	ASSERT (!intr_context ());
 	ASSERT (!lock_held_by_current_thread (lock));
 
+	if (thread_mlfqs) {
+      sema_down (&lock->semaphore);
+      lock->holder = thread_current ();
+      return ;
+    }
+
 	struct thread * curr = thread_current();
 	if (lock->holder){
 		curr->wish_lock = lock;
@@ -234,6 +240,12 @@ void
 lock_release (struct lock *lock) {
 	ASSERT (lock != NULL);
 	ASSERT (lock_held_by_current_thread (lock));
+
+	lock->holder = NULL;
+  if (thread_mlfqs) {
+    sema_up (&lock->semaphore);
+    return ;
+  }
 
 	lock_remove(lock);
 	refresh_priority();
@@ -340,3 +352,4 @@ cond_broadcast (struct condition *cond, struct lock *lock) {
 	while (!list_empty (&cond->waiters))
 		cond_signal (cond, lock);
 }
+

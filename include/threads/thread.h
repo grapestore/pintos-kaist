@@ -9,6 +9,10 @@
 #include "vm/vm.h"
 #endif
 
+#define NICE_DEFAULT 0
+#define RECENT_CPU_DEFAULT 0
+#define LOAD_AVG_DEFAULT 0
+
 
 /* States in a thread's life cycle. */
 enum thread_status {
@@ -94,11 +98,15 @@ struct thread {
 	int ori_priority;                   /* Original priority */
 	int64_t awake_time;
 
+	int nice;
+    int recent_cpu;
+
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 	struct lock *wish_lock;             /* Have lock list */
 	struct list donations;              /* Donation list*/
 	struct list_elem donation_elem;     /* Donation element list*/
+	struct list_elem allelem;           /* List element for all threads list. */
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */

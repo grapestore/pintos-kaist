@@ -125,11 +125,25 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;
 	thread_tick ();
-	if (first_next_tick_to_awake() <= ticks)
-	{
-		thread_awake(ticks);
+
+	if (thread_mlfqs) {
+      mlfqs_increment_recent_cpu ();
+      if (ticks % 4 == 0) {
+        mlfqs_recalculate_priority ();
+        if (ticks % TIMER_FREQ == 0) {
+          mlfqs_recalculate_recent_cpu ();
+          mlfqs_calculate_load_avg ();
+        }
+      }
+      thread_awake (ticks);
+    }
+	else{
+		if (first_next_tick_to_awake() <= ticks){
+		     thread_awake(ticks);
+        }
 	}
 }
+
 
 /* Returns true if LOOPS iterations waits for more than one timer
    tick, otherwise false. */
@@ -185,3 +199,4 @@ real_time_sleep (int64_t num, int32_t denom) {
 		busy_wait (loops_per_tick * num / 1000 * TIMER_FREQ / (denom / 1000));
 	}
 }
+
