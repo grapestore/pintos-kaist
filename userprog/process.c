@@ -42,7 +42,7 @@ tid_t
 process_create_initd (const char *file_name) {
 	char *fn_copy;
 	tid_t tid;
-
+	
 	/* Make a copy of FILE_NAME.
 	 * Otherwise there's a race between the caller and load(). */
 	fn_copy = palloc_get_page (0);
@@ -173,17 +173,19 @@ process_exec (void *f_name) {
 	_if.cs = SEL_UCSEG;
 	_if.eflags = FLAG_IF | FLAG_MBS;
 
-	/* We first kill the current context */
+	/* We first kill the current conxtext */
 	process_cleanup ();
-
+	
 	/* And then load the binary */
 	success = load (file_name, &_if);
 
 	/* If load failed, quit. */
 	palloc_free_page (file_name);
 	if (!success)
+	{
 		return -1;
-
+	}
+	
 	/* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();
@@ -204,6 +206,7 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
+	for (int i = 0; i < 100000000; i++);
 	return -1;
 }
 
@@ -329,6 +332,19 @@ load (const char *file_name, struct intr_frame *if_) {
 	bool success = false;
 	int i;
 
+	char *token, *save_ptr;
+	char *argv[64];
+	int argc = 0;
+	char *file_name_copy[48];
+	memcpy(file_name_copy, file_name, strlen(file_name_copy) + 1);
+	/*                       file_name 파싱하는 부분           */
+	for(token = strtok_r (file_name, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr))
+	{
+		argv[argc] = token;
+		//printf("%s\n", argv[argc]);
+		argc++;
+	}
+
 	/* Allocate and activate page directory. */
 	t->pml4 = pml4_create ();
 	if (t->pml4 == NULL)
@@ -336,9 +352,9 @@ load (const char *file_name, struct intr_frame *if_) {
 	process_activate (thread_current ());
 
 	/* Open executable file. */
-	file = filesys_open (file_name);
+	file = filesys_open (argv[0]);
 	if (file == NULL) {
-		printf ("load: %s: open failed\n", file_name);
+		printf ("load: %s: open failed\n", argv[0]);
 		goto done;
 	}
 
@@ -350,7 +366,7 @@ load (const char *file_name, struct intr_frame *if_) {
 			|| ehdr.e_version != 1
 			|| ehdr.e_phentsize != sizeof (struct Phdr)
 			|| ehdr.e_phnum > 1024) {
-		printf ("load: %s: error loading executable\n", file_name);
+		printf ("load: %s: error loading executable\n", argv[0]);
 		goto done;
 	}
 
@@ -416,8 +432,10 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
-
+	argument_stack(argv, argc, if_);
+	
 	success = true;
+	
 
 done:
 	/* We arrive here whether the load is successful or not. */
@@ -637,3 +655,49 @@ setup_stack (struct intr_frame *if_) {
 	return success;
 }
 #endif /* VM */
+
+/*                      명령어 인자 스택에 쌓음          */
+void argument_stack(char **argv, int argc, struct intr_frame *if_)
+{
+	int length = 0;
+	void *rsp = if_->rsp;
+	for(int i=argc-1; i>=0; i--)
+	{
+		/*    인자 마지막에 null 추가해줘야됨       */
+		length = strlen(argv[i])+1;
+		rsp -= length;
+		memcpy(rsp,argv[i],length);
+		argv[i] = (uint64_t)rsp;
+	}
+
+	/*      word aligh                      */
+	while((uint64_t)rsp%8 != 0)
+	{
+		rsp -= 1;
+		*(uint8_t *)rsp = 0;
+	}
+
+	for (int i = argc; i >= 0; i--)
+	{
+		rsp = rsp - 8;
+
+		if (i==argc)
+			memset(rsp, 0, sizeof(char*));
+		else
+			memcpy(rsp, &argv[i], sizeof(char**));
+			
+	}
+	
+
+	rsp -= 8;
+	*(uint64_t *)rsp = 0;
+	if_->rsp = rsp;
+
+	if_->R.rdi = argc;
+	if_->R.rsi = rsp;
+
+	/* Debugging */	
+	//printf ("Hey! This is your stack!\n");
+	hex_dump(if_->rsp, rsp, USER_STACK-if_->rsp, true);
+
+}
