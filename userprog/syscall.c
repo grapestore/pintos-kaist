@@ -1,4 +1,5 @@
 #include "userprog/syscall.h"
+#include "userprog/process.h"
 #include <stdio.h>
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
@@ -173,5 +174,12 @@ void check_address(const uint64_t *uaddr)
 
 int exec(const *cmd_line)
 {
-	process_exec(cmd_line);
+	check_address(cmd_line);
+	char *file_name[30];
+	memcpy(file_name, file_name, strlen(cmd_line) + 1);
+	if(process_exec(file_name) == -1)
+		return -1;
+
+	NOT_REACHED();
+	return 0;
 }
