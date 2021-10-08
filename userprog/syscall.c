@@ -30,6 +30,7 @@ void remove_file_from_fdt(int fd);
 
 const int STDIN = 1;
 const int STDOUT = 2;
+struct lock file_lock;
 
 /* System call.
  *
@@ -49,7 +50,7 @@ syscall_init (void) {
 	write_msr(MSR_STAR, ((uint64_t)SEL_UCSEG - 0x10) << 48  |
 			((uint64_t)SEL_KCSEG) << 32);
 	write_msr(MSR_LSTAR, (uint64_t) syscall_entry);
-
+	lock_init(&file_lock);
 	/* The interrupt service rountine should not serve any interrupts
 	 * until the syscall_entry swaps the userland stack to the kernel
 	 * mode stack. Therefore, we masked the FLAG_FL. */
@@ -250,4 +251,27 @@ int read (int fd , void *buffer, unsigned size)
 	else{
 		return file_read(fileobj, buffer, size);
 	}
+}
+
+int write(int fd, void *buffer, unsigned size)
+{
+	check_address(buffer);
+	int length;
+	
+	struct file *fileobj = find_file_by_fd(fd);
+	if (fileobj == NULL)
+		return -1;
+
+/*        fd가 stdout인경우 putbuf를 이용하여 화면에 출력 */
+	if(fd == STDOUT){
+		putbuf(buffer, size);
+		length = size;
+	}
+	else{
+		lock_acquire(&file_lock);
+		length = file_write(fileobj, buffer, size);
+		lock_release(&file_lock);
+	}
+	
+	return length;
 }
