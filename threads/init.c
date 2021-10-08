@@ -67,31 +67,32 @@ int main (void) NO_RETURN;
 /* Pintos main program. */
 int
 main (void) {
+	
 	uint64_t mem_end;
 	char **argv;
 
 	/* Clear BSS and get machine's RAM size. */
 	bss_init ();
-
+	
 	/* Break command line into arguments and parse options. */
 	argv = read_command_line ();
 	argv = parse_options (argv);
-
+	
 	/* Initialize ourselves as a thread so we can use locks,
 	   then enable console locking. */
 	thread_init ();
 	console_init ();
-
+	
 	/* Initialize memory system. */
 	mem_end = palloc_init ();
 	malloc_init ();
 	paging_init (mem_end);
-
+	
 #ifdef USERPROG
 	tss_init ();
 	gdt_init ();
 #endif
-
+	
 	/* Initialize interrupt handlers. */
 	intr_init ();
 	timer_init ();
@@ -103,9 +104,10 @@ main (void) {
 #endif
 	/* Start thread scheduler and enable interrupts. */
 	thread_start ();
+	printf("check\n\n\n\n\n");
 	serial_init_queue ();
 	timer_calibrate ();
-
+	
 #ifdef FILESYS
 	/* Initialize file system. */
 	disk_init ();
@@ -115,9 +117,9 @@ main (void) {
 #ifdef VM
 	vm_init ();
 #endif
-
+	
 	printf ("Boot complete.\n");
-
+	
 	/* Run actions specified on kernel command line. */
 	run_actions (argv);
 

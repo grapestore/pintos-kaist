@@ -206,22 +206,22 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-	// for (int i = 0; i < 100000000; i++);
-	// return -1;
-	struct thread *cur = thread_current();
+	for (int i = 0; i < 100000000; i++);
+	return -1;
+	// struct thread *cur = thread_current();
 
-	struct thread *child = get_child_with_pid(child_tid);
+	// struct thread *child = get_child_with_pid(child_tid);
 
-	if (child == NULL)
-		return -1;
+	// if (child == NULL)
+	// 	return -1;
 
-	sema_down(&child->wait_sema);
+	// sema_down(&child->wait_sema);
 
-	int exit_status = child->exit_status;
+	// int exit_status = child->exit_status;
 
-	list_remove(&child->child_elem);
-	//sema_up(&child->free_sema); 
-	return exit_status;
+	// list_remove(&child->child_elem);
+	// //sema_up(&child->free_sema); 
+	//return exit_status;
 
 }
 
@@ -234,14 +234,14 @@ process_exit (void) {
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
 
-	for (int i = 0; i < FDCOUNT_LIMIT; i++)
-	{
-		/close(i);
-	}
+	// for (int i = 0; i < FDCOUNT_LIMIT; i++)
+	// {
+	// 	close(i);
+	// }
 
 	process_cleanup ();
 
-	sema_up(&cur->wait_sema);
+	//sema_up(&cur->wait_sema);
 	//sema_down(&cur->free_sema);
 
 }
@@ -365,7 +365,7 @@ load (const char *file_name, struct intr_frame *if_) {
 	for(token = strtok_r (file_name, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr))
 	{
 		argv[argc] = token;
-		//printf("%s\n", argv[argc]);
+		printf("checkedkjflsjflk%s\n\n\n", argv[argc]);
 		argc++;
 	}
 
@@ -721,7 +721,7 @@ void argument_stack(char **argv, int argc, struct intr_frame *if_)
 	if_->R.rsi = rsp;
 
 	/* Debugging */	
-	//printf ("Hey! This is your stack!\n");
+	printf ("Hey! This is your stack!\n\n\n\n\n\n\n\n");
 	hex_dump(if_->rsp, rsp, USER_STACK-if_->rsp, true);
 
 }

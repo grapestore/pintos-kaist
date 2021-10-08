@@ -142,8 +142,9 @@ thread_start (void) {
 	/* Create the idle thread. */
 	struct semaphore idle_started;
 	sema_init (&idle_started, 0);
+	
 	thread_create ("idle", PRI_MIN, idle, &idle_started);
-
+	
 	/* Start preemptive thread scheduling. */
 	intr_enable ();
 
@@ -188,23 +189,24 @@ thread_create (const char *name, int priority,
 	tid_t tid;
 
 	ASSERT (function != NULL);
-
+	
 	/* Allocate thread. */
 	t = palloc_get_page (PAL_ZERO);
+	
 	if (t == NULL)
 		return TID_ERROR;
-	t->fdIdx = 2; // 0:stdin 1:stdout 
-	t->fdTable[0] = 1;
-	t->fdTable[1] = 2;
-	t->stdin_count = 1;
-	t->stdout_count = 1;
-
+	// t->fdIdx = 2; // 0:stdin 1:stdout 
+	// t->fdTable[0] = 1;
+	// t->fdTable[1] = 2;
+	// t->stdin_count = 1;
+	// t->stdout_count = 1;
+	
 	/* Initialize thread. */
 	init_thread (t, name, priority);
-
+	
 	t->fdTable = palloc_get_multiple(PAL_ZERO, FDT_PAGES);
 
-
+	
 	tid = t->tid = allocate_tid ();
 
 	/* Call the kernel_thread if it scheduled.
