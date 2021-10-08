@@ -12,18 +12,18 @@ void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
 
 /*              system call by inkyu            */
-// void halt(void);
-// void exit(int status);
-// bool create(const char *file, unsigned initial_size);
-// bool remove(const char *file);
-// int open (const char *file);
-// int filesize(int fd);
-// int exec(const *cmd_line);
+void halt(void);
+void exit(int status);
+bool create(const char *file, unsigned initial_size);
+bool remove(const char *file);
+int open (const char *file);
+int filesize(int fd);
+int exec(const *cmd_line);
 
-// /*              system call need func by inkyu            */
-// int add_file_to_fdt(struct file *file);
-// static struct file *find_file_by_fd(int fd);
-// void check_address(const uint64_t *uaddr);
+/*              system call need func by inkyu            */
+int add_file_to_fdt(struct file *file);
+static struct file *find_file_by_fd(int fd);
+void check_address(const uint64_t *uaddr);
 
 /* System call.
  *
@@ -57,121 +57,121 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
 	switch (f->R.rax)
 	{
-	// case SYS_HALT:
-	// 	halt();
-	// 	break;
-	// case SYS_EXIT:
-	// 	exit(f->R.rdi);
-	// 	break;
-	// case SYS_CREATE:
-	// 	f->R.rax = create(f->R.rdi, f->R.rsi);
-	// 	break;
-	// case SYS_REMOVE:
-	// 	f->R.rax = remove(f->R.rdi);
+	case SYS_HALT:
+		halt();
+		break;
+	case SYS_EXIT:
+		exit(f->R.rdi);
+		break;
+	case SYS_CREATE:
+		f->R.rax = create(f->R.rdi, f->R.rsi);
+		break;
+	case SYS_REMOVE:
+		f->R.rax = remove(f->R.rdi);
 	// case SYS_OPEN:
 	// 	f->R.rax = open(f->R.rdi);
 	// 	break;
 	// case SYS_FILESIZE:
 	// 	f->R.rax = filesize(f->R.rdi);
 	// 	break;
-	// case SYS_EXEC:
-	// 	f->R.rax = exec(f->R.rdi);
-	// 	break;
+	case SYS_EXEC:
+		f->R.rax = exec(f->R.rdi);
+		break;
 	
 	default:
 		break;
 	}
 }
 
-// void halt(void)
-// {
-// 	power_off();
-// }
+void halt(void)
+{
+	power_off();
+}
 
-// void exit(int status)
-// {
-// 	struct thread *cur = thread_current();
-// 	cur->exit_status = status;
+void exit(int status)
+{
+	struct thread *cur = thread_current();
+	cur->exit_status = status;
 
-// 	printf("%s: exit(%d)\n", thread_name(), status); // Process Termination Message
-// 	thread_exit();
-// }
+	printf("%s: exit(%d)\n", thread_name(), status); // Process Termination Message
+	thread_exit();
+}
 
-// bool create(const char *file, unsigned initial_size)
-// {
-// 	check_address(file);
-// 	return filesys_create(file, initial_size);
-// }
+bool create(const char *file, unsigned initial_size)
+{
+	check_address(file);
+	return filesys_create(file, initial_size);
+}
 
-// bool remove(const char *file)
-// {
-// 	check_address(file);
-// 	return filesys_remove(file);
-// }
+bool remove(const char *file)
+{
+	check_address(file);
+	return filesys_remove(file);
+}
 
-// int
-// open (const char *file) {
-// 	check_address(file);
-// 	struct file *fileobj = filesys_open(file);
+int
+open (const char *file) {
+	check_address(file);
+	struct file *fileobj = filesys_open(file);
 
-// 	if (fileobj == NULL)
-// 		return -1;
+	if (fileobj == NULL)
+		return -1;
 	
-// 	int fd = add_file_to_fdt(fileobj);
+	int fd = add_file_to_fdt(fileobj);
 
 
-// 	if(fd == -1)
-// 		return file_close(fileobj);
+	if(fd == -1)
+		return file_close(fileobj);
 
-// 	return fd;
-// }
+	return fd;
+}
 
-// int add_file_to_fdt(struct file *file)
-// {
-// 	struct thread *cur = thread_current();
-// 	struct file **fdt = cur->fdTable;
+int add_file_to_fdt(struct file *file)
+{
+	struct thread *cur = thread_current();
+	struct file **fdt = cur->fdTable;
 
-// 	//파일 개수 및 새로 열 파일의 fd값 raise
-// 	while(cur->fdIdx<FDCOUNT_LIMIT && fdt[cur->fdIdx])
-// 	{
-// 		cur->fdIdx++;
-// 	}
+	//파일 개수 및 새로 열 파일의 fd값 raise
+	while(cur->fdIdx<FDCOUNT_LIMIT && fdt[cur->fdIdx])
+	{
+		cur->fdIdx++;
+	}
 
-// 	// fdt full limit 512개
-// 	if(cur->fdIdx >= FDCOUNT_LIMIT)
-// 		return -1;
+	// fdt full limit 512개
+	if(cur->fdIdx >= FDCOUNT_LIMIT)
+		return -1;
 	
-// 	fdt[cur->fdIdx] = file;
-// 	return cur->fdIdx;
-// }
+	fdt[cur->fdIdx] = file;
+	return cur->fdIdx;
+}
 
-// int filesize(int fd)
-// {
-// 	struct file *fileobj = find_file_by_fd(fd);
-// 	if(fileobj == NULL)
-// 		return -1;
-// 	return file_length(fileobj);
-// }
+int filesize(int fd)
+{
+	struct file *fileobj = find_file_by_fd(fd);
+	if(fileobj == NULL)
+		return -1;
+	return file_length(fileobj);
+}
 
-// static struct file *find_file_by_fd(int fd)
-// {
-// 	struct thread *cur = thread_current();
-// 	if(fd<0 || fd>=FDCOUNT_LIMIT)
-// 		return NULL;
+static struct file *find_file_by_fd(int fd)
+{
+	struct thread *cur = thread_current();
+	if(fd<0 || fd>=FDCOUNT_LIMIT)
+		return NULL;
 
-// 	return cur->fdTable[fd];
-// }
+	return cur->fdTable[fd];
+}
 
-// void check_address(const uint64_t *uaddr)
-// {
-// 	struct thread *cur = thread_current();
-// 	if (uaddr == NULL || !(is_user_vaddr(uaddr)) || pml4_get_page(cur->pml4, uaddr) == NULL)
-// 	{
-// 		exit(-1);
-// 	}
-// }
+void check_address(const uint64_t *uaddr)
+{
+	struct thread *cur = thread_current();
+	if (uaddr == NULL || !(is_user_vaddr(uaddr)) || pml4_get_page(cur->pml4, uaddr) == NULL)
+	{
+		exit(-1);
+	}
+}
 
-// int exec(const *cmd_line)
-// {
-// 	process_exec(cmd_line);
-// }
+int exec(const *cmd_line)
+{
+	process_exec(cmd_line);
+}

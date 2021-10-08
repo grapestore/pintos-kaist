@@ -206,22 +206,22 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-	for (int i = 0; i < 100000000; i++);
-	return -1;
-	// struct thread *cur = thread_current();
+	// for (int i = 0; i < 100000000; i++);
+	// return -1;
+	struct thread *cur = thread_current();
 
-	// struct thread *child = get_child_with_pid(child_tid);
+	struct thread *child = get_child_with_pid(child_tid);
 
-	// if (child == NULL)
-	// 	return -1;
+	if (child == NULL)
+		return -1;
 
-	// sema_down(&child->wait_sema);
+	sema_down(&child->wait_sema);
 
-	// int exit_status = child->exit_status;
+	int exit_status = child->exit_status;
 
-	// list_remove(&child->child_elem);
-	// //sema_up(&child->free_sema); 
-	// return exit_status;
+	list_remove(&child->child_elem);
+	//sema_up(&child->free_sema); 
+	return exit_status;
 
 }
 
@@ -360,9 +360,9 @@ load (const char *file_name, struct intr_frame *if_) {
 	char *argv[64];
 	int argc = 0;
 	char *file_name_copy[48];
-	memcpy(file_name_copy, file_name, strlen(file_name_copy) + 1);
+	memcpy(file_name_copy, file_name, strlen(file_name) + 1);
 	/*                       file_name 파싱하는 부분           */
-	for(token = strtok_r (file_name, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr))
+	for(token = strtok_r (file_name_copy, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr))
 	{
 		argv[argc] = token;
 		argc++;
