@@ -195,18 +195,18 @@ thread_create (const char *name, int priority,
 	
 	if (t == NULL)
 		return TID_ERROR;
-	// t->fdIdx = 2; // 0:stdin 1:stdout 
-	// t->fdTable[0] = 1;
-	// t->fdTable[1] = 2;
-	// t->stdin_count = 1;
-	// t->stdout_count = 1;
+
+	t->fdTable = palloc_get_multiple(PAL_ZERO, FDT_PAGES);
+
+	t->fdIdx = 2; // 0:stdin 1:stdout 
+	t->fdTable[0] = 1;
+	t->fdTable[1] = 2;
+	t->stdin_count = 1;
+	t->stdout_count = 1;
 	
 	/* Initialize thread. */
 	init_thread (t, name, priority);
-	
-	t->fdTable = palloc_get_multiple(PAL_ZERO, FDT_PAGES);
 
-	
 	tid = t->tid = allocate_tid ();
 
 	/* Call the kernel_thread if it scheduled.
