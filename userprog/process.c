@@ -359,7 +359,7 @@ load (const char *file_name, struct intr_frame *if_) {
 	char *token, *save_ptr;
 	char *argv[64];
 	int argc = 0;
-	char *file_name_copy[48];
+	char *file_name_copy[30];
 	memcpy(file_name_copy, file_name, strlen(file_name) + 1);
 	/*                       file_name 파싱하는 부분           */
 	for(token = strtok_r (file_name_copy, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr))

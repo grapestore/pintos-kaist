@@ -20,11 +20,16 @@ bool remove(const char *file);
 int open (const char *file);
 int filesize(int fd);
 int exec(const *cmd_line);
+int read (int fd , void *buffer, unsigned size);
 
 /*              system call need func by inkyu            */
 int add_file_to_fdt(struct file *file);
 static struct file *find_file_by_fd(int fd);
 void check_address(const uint64_t *uaddr);
+void remove_file_from_fdt(int fd);
+
+const int STDIN = 1;
+const int STDOUT = 2;
 
 /* System call.
  *
@@ -72,11 +77,17 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	case SYS_OPEN:
 		f->R.rax = open(f->R.rdi);
 		break;
-	// case SYS_FILESIZE:
-	// 	f->R.rax = filesize(f->R.rdi);
-	// 	break;
+	case SYS_CLOSE:
+		close(f->R.rdi);
+		break;
+	case SYS_FILESIZE:
+		f->R.rax = filesize(f->R.rdi);
+		break;
 	case SYS_EXEC:
 		f->R.rax = exec(f->R.rdi);
+		break;
+	case SYS_READ:
+
 		break;
 	
 	default:
@@ -125,6 +136,33 @@ open (const char *file) {
 		return file_close(fileobj);
 
 	return fd;
+}
+
+void close(int fd)
+{
+	/*       fd를이용하여 file 받음 by inky           */
+	struct file *objfile = find_file_by_fd(fd);
+	struct thread *cur = thread_current();
+
+	if(objfile == NULL)
+		return -1;
+
+	if (fd == 0 || objfile == STDIN)
+	{
+		cur->stdin_count--;
+	}
+	else if (fd == 1 || objfile == STDOUT)
+	{
+		cur->stdout_count--;
+	}
+
+	
+/*      table 에서 삭제           */
+	remove_file_from_fdt(fd);
+
+	file_close(objfile);
+
+	return;
 }
 
 int add_file_to_fdt(struct file *file)
@@ -176,10 +214,40 @@ int exec(const *cmd_line)
 {
 	check_address(cmd_line);
 	char *file_name[30];
-	memcpy(file_name, file_name, strlen(cmd_line) + 1);
+	memcpy(file_name, cmd_line, strlen(cmd_line) + 1);
 	if(process_exec(file_name) == -1)
 		return -1;
 
 	NOT_REACHED();
 	return 0;
+}
+
+void remove_file_from_fdt(int fd)
+{
+	struct thread *cur = thread_current();
+
+	// Error - invalid fd
+	if (fd < 0 || fd >= FDCOUNT_LIMIT)
+		return;
+
+	cur->fdTable[fd] = NULL;
+}
+
+int read (int fd , void *buffer, unsigned size)
+{
+	check_address(buffer);
+	struct file *fileobj = find_file_by_fd(fd);
+	if(fileobj == NULL)
+		return -1;
+	
+	if(fd == 0)
+	{
+		buffer = input_getc();
+	}
+	else if(fd == 1){
+		return -1;
+	}
+	else{
+		return file_read(fileobj, buffer, size);
+	}
 }
