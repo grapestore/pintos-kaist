@@ -87,7 +87,6 @@ main (void) {
 	mem_end = palloc_init ();
 	malloc_init ();
 	paging_init (mem_end);
-	
 #ifdef USERPROG
 	tss_init ();
 	gdt_init ();
@@ -104,7 +103,6 @@ main (void) {
 #endif
 	/* Start thread scheduler and enable interrupts. */
 	thread_start ();
-	printf("check\n\n\n\n\n");
 	serial_init_queue ();
 	timer_calibrate ();
 	

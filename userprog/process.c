@@ -221,7 +221,7 @@ process_wait (tid_t child_tid UNUSED) {
 
 	// list_remove(&child->child_elem);
 	// //sema_up(&child->free_sema); 
-	//return exit_status;
+	// return exit_status;
 
 }
 
@@ -241,7 +241,7 @@ process_exit (void) {
 
 	process_cleanup ();
 
-	//sema_up(&cur->wait_sema);
+	sema_up(&cur->wait_sema);
 	//sema_down(&cur->free_sema);
 
 }
@@ -365,7 +365,6 @@ load (const char *file_name, struct intr_frame *if_) {
 	for(token = strtok_r (file_name, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr))
 	{
 		argv[argc] = token;
-		printf("checkedkjflsjflk%s\n\n\n", argv[argc]);
 		argc++;
 	}
 
@@ -721,7 +720,7 @@ void argument_stack(char **argv, int argc, struct intr_frame *if_)
 	if_->R.rsi = rsp;
 
 	/* Debugging */	
-	printf ("Hey! This is your stack!\n\n\n\n\n\n\n\n");
+	//printf ("Hey! This is your stack!\n\n\n\n\n\n\n\n");
 	hex_dump(if_->rsp, rsp, USER_STACK-if_->rsp, true);
 
 }
