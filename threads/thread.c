@@ -193,9 +193,18 @@ thread_create (const char *name, int priority,
 	t = palloc_get_page (PAL_ZERO);
 	if (t == NULL)
 		return TID_ERROR;
+	t->fdIdx = 2; // 0:stdin 1:stdout 
+	t->fdTable[0] = 1;
+	t->fdTable[1] = 2;
+	t->stdin_count = 1;
+	t->stdout_count = 1;
 
 	/* Initialize thread. */
 	init_thread (t, name, priority);
+
+	t->fdTable = palloc_get_multiple(PAL_ZERO, FDT_PAGES);
+
+
 	tid = t->tid = allocate_tid ();
 
 	/* Call the kernel_thread if it scheduled.
@@ -209,6 +218,9 @@ thread_create (const char *name, int priority,
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 
+	/* parent child list에 child thread elem 추가 */
+	struct thread *cur = thread_current();
+	list_push_back(&cur->child_list, &t->child_elem);
 
 
 	/* Add to run queue. */
@@ -444,11 +456,17 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->ori_priority = priority;
 	t->wish_lock = NULL;
 	t->nice = NICE_DEFAULT;
-    t->recent_cpu = RECENT_CPU_DEFAULT;
+  t->recent_cpu = RECENT_CPU_DEFAULT;
 	t->magic = THREAD_MAGIC;
 
 	list_init (&t->donations);
 	list_push_back (&all_list, &t->allelem);
+
+	// project 2 syscalls
+	list_init(&t->child_list);
+	sema_init(&t->wait_sema,0);
+	sema_init(&t->fork_sema,0);
+	sema_init(&t->free_sema,0);
 
 }
 

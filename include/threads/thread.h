@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "threads/synch.h"
 #include "threads/interrupt.h"
 #ifdef VM
 #include "vm/vm.h"
@@ -99,7 +100,7 @@ struct thread {
 	int64_t awake_time;
 
 	int nice;
-    int recent_cpu;
+  int recent_cpu;
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
@@ -107,6 +108,27 @@ struct thread {
 	struct list donations;              /* Donation list*/
 	struct list_elem donation_elem;     /* Donation element list*/
 	struct list_elem allelem;           /* List element for all threads list. */
+
+	/* Project 2 */
+	// 2-3 Parent-child hierarchy
+	struct list child_list;		 // keep children
+	struct list_elem child_elem; // used to put current thread into 'children' list
+	// 2-3 wait syscall
+	struct semaphore wait_sema; // used by parent to wait for child
+	int exit_status;			// used to deliver child exit_status to parent
+	// 2-3 fork syscall
+	struct intr_frame parent_if; // to preserve my current intr_frame and pass it down to child in fork ('parent_if' in child's perspective)
+	struct semaphore fork_sema;	 // parent wait (process_wait) until child fork completes (__do_fork)
+	struct semaphore free_sema;
+	// 2-4 file descripter
+	struct file **fdTable;
+	int fdIdx;
+	// 2-5 deny exec writes
+	struct file *running; // executable ran by current process (process.c load, process_exit)
+	// 2-extra - count the number of open stdin/stdout
+	// dup2 may copy stdin or stdout; stdin or stdout is not really closed until these counts goes 0
+	int stdin_count;
+	int stdout_count;
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
@@ -174,5 +196,9 @@ bool thread_compare_donate_priority (const struct list_elem *a_, const struct li
 
 void thread_preemption(void); 
 void refresh_priority(void);
+
+// 2-4 syscall - fork
+#define FDT_PAGES 3						  // pages to allocate for file descriptor tables (thread_create, process_exit)
+#define FDCOUNT_LIMIT FDT_PAGES *(1 << 9) // Limit fdIdx
 
 #endif /* threads/thread.h */
