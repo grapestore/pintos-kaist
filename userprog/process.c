@@ -50,6 +50,10 @@ process_create_initd (const char *file_name) {
 		return TID_ERROR;
 	strlcpy (fn_copy, file_name, PGSIZE);
 
+	/* return 0으로 exit syscall 호출시 thread 이름 출력때문에 바꿔줘야됨 */
+	char *save_ptr;
+	strtok_r(file_name, " ", &save_ptr);
+
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
@@ -234,10 +238,10 @@ process_exit (void) {
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
 
-	// for (int i = 0; i < FDCOUNT_LIMIT; i++)
-	// {
-	// 	close(i);
-	// }
+	for (int i = 2; i < FDCOUNT_LIMIT; i++)
+	{
+		close(i);
+	}
 
 	process_cleanup ();
 
@@ -710,18 +714,19 @@ void argument_stack(char **argv, int argc, struct intr_frame *if_)
 			memcpy(rsp, &argv[i], sizeof(char**));
 			
 	}
-	
-
-	rsp -= 8;
-	*(uint64_t *)rsp = 0;
-	if_->rsp = rsp;
-
+	/*        before create fake return  rsi 업데이트         */
 	if_->R.rdi = argc;
 	if_->R.rsi = rsp;
 
+	rsp -= 8;
+	memset(rsp, 0, sizeof(char*));
+	if_->rsp = rsp;
+
+	
+
 	/* Debugging */	
 	//printf ("Hey! This is your stack!\n\n\n\n\n\n\n\n");
-	hex_dump(if_->rsp, rsp, USER_STACK-if_->rsp, true);
+	//hex_dump(if_->rsp, rsp, USER_STACK-if_->rsp, true);
 
 }
 

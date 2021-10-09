@@ -21,6 +21,7 @@ int open (const char *file);
 int filesize(int fd);
 int exec(const *cmd_line);
 int read (int fd , void *buffer, unsigned size);
+int write (int fd , void *buffer, unsigned size);
 
 /*              system call need func by inkyu            */
 int add_file_to_fdt(struct file *file);
@@ -88,7 +89,10 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		f->R.rax = exec(f->R.rdi);
 		break;
 	case SYS_READ:
-
+		f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
+		break;
+	case SYS_WRITE:
+		f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
 		break;
 	
 	default:
@@ -276,7 +280,7 @@ int write(int fd, void *buffer, unsigned size)
 		return -1;
 
 /*        fd가 stdout인경우 putbuf를 이용하여 화면에 출력 */
-	if(fd == STDOUT){
+	if(fd == 1){
 		putbuf(buffer, size);
 		length = size;
 	}
