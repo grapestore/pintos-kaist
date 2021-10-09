@@ -237,20 +237,33 @@ void remove_file_from_fdt(int fd)
 int read (int fd , void *buffer, unsigned size)
 {
 	check_address(buffer);
+	int length;
 	struct file *fileobj = find_file_by_fd(fd);
 	if(fileobj == NULL)
 		return -1;
 	
 	if(fd == 0)
 	{
-		buffer = input_getc();
+		int i;
+			unsigned char *buf = buffer;
+			for (i = 0; i < size; i++)
+			{
+				char c = input_getc();
+				*buf++ = c;
+				if (c == '\0')
+					break;
+			}
+			length = i;
 	}
 	else if(fd == 1){
-		return -1;
+		length = -1;
 	}
 	else{
-		return file_read(fileobj, buffer, size);
+		lock_acquire(&file_lock);
+		length = file_read(fileobj, buffer, size);
+		lock_release(&file_lock);
 	}
+	return length;
 }
 
 int write(int fd, void *buffer, unsigned size)
