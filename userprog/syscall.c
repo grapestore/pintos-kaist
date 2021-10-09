@@ -28,6 +28,7 @@ int exec(const *cmd_line);
 int read (int fd , void *buffer, unsigned size);
 int write (int fd , void *buffer, unsigned size);
 void seek(int fd, unsigned position);
+unsigned tell(int fd);
 
 /*              system call need func by inkyu            */
 int add_file_to_fdt(struct file *file);
@@ -102,6 +103,8 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		break;
 	case SYS_SEEK:
 		seek(f->R.rdi, f->R.rsi);
+	case SYS_TELL:
+		tell(f->R.rdi);	
 	default:
 		break;
 	}
@@ -311,4 +314,12 @@ void seek(int fd, unsigned position)
 		return;
 	fileobj->pos = position;
 	return;
+}
+
+unsigned tell(int fd)
+{
+	struct file *fileobj = find_file_by_fd(fd);
+	if (fileobj <= 2)
+		return;
+	return fileobj->pos;
 }
