@@ -1,12 +1,17 @@
-#include "userprog/syscall.h"
-#include "userprog/process.h"
-#include <stdio.h>
-#include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/loader.h"
-#include "userprog/gdt.h"
+#include "threads/palloc.h"
 #include "threads/flags.h"
+#include "threads/vaddr.h"
+#include "userprog/gdt.h"
+#include "userprog/process.h"
+#include "userprog/syscall.h"
+#include "filesys/filesys.h"
+#include "filesys/file.h"
+#include <list.h>
+#include <stdio.h>
+#include <syscall-nr.h>
 #include "intrinsic.h"
 
 void syscall_entry (void);
@@ -22,6 +27,7 @@ int filesize(int fd);
 int exec(const *cmd_line);
 int read (int fd , void *buffer, unsigned size);
 int write (int fd , void *buffer, unsigned size);
+void seek(int fd, unsigned position);
 
 /*              system call need func by inkyu            */
 int add_file_to_fdt(struct file *file);
@@ -94,7 +100,8 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	case SYS_WRITE:
 		f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
 		break;
-	
+	case SYS_SEEK:
+		seek(f->R.rdi, f->R.rsi);
 	default:
 		break;
 	}
@@ -137,9 +144,10 @@ open (const char *file) {
 	int fd = add_file_to_fdt(fileobj);
 
 
-	if(fd == -1)
-		return file_close(fileobj);
-
+	if(fd < 0){
+		file_close(fileobj);
+		return -1;
+	}
 	return fd;
 }
 
@@ -279,10 +287,13 @@ int write(int fd, void *buffer, unsigned size)
 	if (fileobj == NULL)
 		return -1;
 
-/*        fd가 stdout인경우 putbuf를 이용하여 화면에 출력 */
+/*        fd가 stdout인경우 putbuf를 이용하여 화면에 출력          */
 	if(fd == 1){
 		putbuf(buffer, size);
 		length = size;
+	}
+	else if(fd == 0){
+		length = -1;
 	}
 	else{
 		lock_acquire(&file_lock);
@@ -291,4 +302,13 @@ int write(int fd, void *buffer, unsigned size)
 	}
 	
 	return length;
+}
+
+void seek(int fd, unsigned position)
+{
+	struct file *fileobj = find_file_by_fd(fd);
+	if(fileobj <= 2)
+		return;
+	fileobj->pos = position;
+	return;
 }

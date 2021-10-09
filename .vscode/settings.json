@@ -14,6 +14,7 @@
         "debug.h": "c",
         "inttypes.h": "c",
         "intrinsic.h": "c",
-        "loader.h": "c"
+        "loader.h": "c",
+        "file.h": "c"
     }
 }
