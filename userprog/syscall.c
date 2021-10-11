@@ -26,7 +26,7 @@ int open (const char *file);
 int filesize(int fd);
 int exec(const *cmd_line);
 int read (int fd , void *buffer, unsigned size);
-int write (int fd , void *buffer, unsigned size);
+int write (int fd , const void *buffer, unsigned size);
 void seek(int fd, unsigned position);
 unsigned tell(int fd);
 int wait (tid_t tid);
@@ -151,12 +151,16 @@ int
 open (const char *file) {
 	check_address(file);
 	struct file *fileobj = filesys_open(file);
-	
+
 	if (fileobj == NULL)
 		return -1;
 	
-	int fd = add_file_to_fdt(fileobj);
+	/*   아직 file이 막 open되었는데 다른 process들이 접근하여 파일을 수정해주어서는 안된다     */
+	/* 때문에 현재 thread에 실행예정인 file의 주소를 넣어주고 접근을 못하게 막아준다. */
 
+	if(strcmp(thread_name(), file) == 0)
+		file_deny_write(fileobj);
+	int fd = add_file_to_fdt(fileobj);
 	
 	if(fd == -1){
 		file_close(fileobj);
@@ -288,21 +292,23 @@ int read (int fd , void *buffer, unsigned size)
 	return length;
 }
 
-int write(int fd, void *buffer, unsigned size)
+int write(int fd, const void *buffer, unsigned size)
 {
 	check_address(buffer);
 	int length;
 	
 	struct file *fileobj = find_file_by_fd(fd);
+	
 	if (fileobj == NULL)
 		return -1;
 
 /*        fd가 stdout인경우 putbuf를 이용하여 화면에 출력          */
-	if(fd == 1){
+	if(fileobj == STDOUT){
+		//printf("\n%d : %p\n", fd, fileobj);
 		putbuf(buffer, size);
 		length = size;
 	}
-	else if(fd == 0){
+	else if(fileobj == STDIN){
 		length = -1;
 	}
 	else{

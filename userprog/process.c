@@ -82,7 +82,6 @@ process_fork (const char *name, struct intr_frame *if_) {
 	/* Clone current thread to new thread.*/
 	struct thread *cur = thread_current ();
 	memcpy(&cur->parent_if, if_, sizeof(struct intr_frame));
-	
 	tid_t tid = thread_create (name, PRI_DEFAULT, __do_fork, cur);
 	if(tid == TID_ERROR)
 		return TID_ERROR;
@@ -453,11 +452,6 @@ load (const char *file_name, struct intr_frame *if_) {
 		printf ("load: %s: open failed\n", argv[0]);
 		goto done;
 	}
-
-	/*   아직 file이 막 open되었는데 다른 process들이 접근하여 파일을 수정해주어서는 안된다     */
-	/* 때문에 현재 thread에 실행예정인 file의 주소를 넣어주고 접근을 못하게 막아준다. */
-	t->running = file;
-	file_deny_write(file);
 
 	/* Read and verify executable header. */
 	if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
