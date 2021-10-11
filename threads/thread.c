@@ -479,6 +479,7 @@ init_thread(struct thread *t, const char *name, int priority)
 
 	memset(t, 0, sizeof *t);
 	t->status = THREAD_BLOCKED;
+	
 	strlcpy(t->name, name, sizeof t->name);
 	t->tf.rsp = (uint64_t)t + PGSIZE - sizeof(void *);
 	t->priority = priority;
@@ -542,6 +543,7 @@ void do_iret(struct intr_frame *tf)
 		:
 		: "g"((uint64_t)tf)
 		: "memory");
+		
 }
 
 /* Switching the thread by activating the new thread's page

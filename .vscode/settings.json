@@ -15,6 +15,10 @@
         "inttypes.h": "c",
         "intrinsic.h": "c",
         "loader.h": "c",
-        "file.h": "c"
+        "file.h": "c",
+        "filesys.h": "c",
+        "boundary.h": "c",
+        "main.h": "c",
+        "lib.h": "c"
     }
 }

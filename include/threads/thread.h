@@ -201,7 +201,7 @@ void thread_update_priority(struct thread *t);
 int load_avg;
 
 // 2-4 syscall - fork
-#define FDT_PAGES 3						  // pages to allocate for file descriptor tables (thread_create, process_exit)
+#define FDT_PAGES 3					  // pages to allocate for file descriptor tables (thread_create, process_exit)
 #define FDCOUNT_LIMIT FDT_PAGES *(1 << 9) // Limit fdIdx
 
 #endif /* threads/thread.h */

@@ -7,7 +7,7 @@ void *
 memcpy (void *dst_, const void *src_, size_t size) {
 	unsigned char *dst = dst_;
 	const unsigned char *src = src_;
-
+	
 	ASSERT (dst != NULL || size == 0);
 	ASSERT (src != NULL || size == 0);
 

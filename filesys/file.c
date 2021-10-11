@@ -14,6 +14,9 @@ file_open (struct inode *inode) {
 		file->inode = inode;
 		file->pos = 0;
 		file->deny_write = false;
+		/* 파일 복제된 횟수 카운트 */
+		file->dupCount = 0;
+
 		return file;
 	} else {
 		inode_close (inode);

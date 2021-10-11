@@ -29,6 +29,8 @@ int read (int fd , void *buffer, unsigned size);
 int write (int fd , void *buffer, unsigned size);
 void seek(int fd, unsigned position);
 unsigned tell(int fd);
+int wait (tid_t tid);
+tid_t fork(const char *thread_name, struct intr_frame *f);
 
 /*              system call need func by inkyu            */
 int add_file_to_fdt(struct file *file);
@@ -93,7 +95,8 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		f->R.rax = filesize(f->R.rdi);
 		break;
 	case SYS_EXEC:
-		f->R.rax = exec(f->R.rdi);
+		if (exec(f->R.rdi) == -1)
+			exit(-1);
 		break;
 	case SYS_READ:
 		f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
@@ -103,8 +106,16 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		break;
 	case SYS_SEEK:
 		seek(f->R.rdi, f->R.rsi);
+		break;
 	case SYS_TELL:
-		tell(f->R.rdi);	
+		f->R.rax = tell(f->R.rdi);
+		break;
+	case SYS_WAIT:
+		f->R.rax = wait(f->R.rdi);
+		break;
+	case SYS_FORK:
+		f->R.rax = fork(f->R.rdi, f);
+		break;
 	default:
 		break;
 	}
@@ -140,43 +151,39 @@ int
 open (const char *file) {
 	check_address(file);
 	struct file *fileobj = filesys_open(file);
-
+	
 	if (fileobj == NULL)
 		return -1;
 	
 	int fd = add_file_to_fdt(fileobj);
 
-
-	if(fd < 0){
+	
+	if(fd == -1){
 		file_close(fileobj);
-		return -1;
 	}
+
 	return fd;
 }
 
 void close(int fd)
 {
-	/*       fd를이용하여 file 받음 by inky           */
+	/*       fd를이용하여 file 받음 by inkyu           */
 	struct file *objfile = find_file_by_fd(fd);
 	struct thread *cur = thread_current();
 
 	if(objfile == NULL)
-		return -1;
+		return;
 
-	if (fd == 0 || objfile == STDIN)
-	{
-		cur->stdin_count--;
-	}
-	else if (fd == 1 || objfile == STDOUT)
-	{
-		cur->stdout_count--;
-	}
+	if (fd <= 1 || objfile <= 2)
+		return;
 
-	
 /*      table 에서 삭제           */
 	remove_file_from_fdt(fd);
 
-	file_close(objfile);
+	//if(objfile->dupCount == 0)
+		file_close(objfile);
+	//else if(objfile->dupCount > 0)
+		//objfile->dupCount--;
 
 	return;
 }
@@ -185,10 +192,10 @@ int add_file_to_fdt(struct file *file)
 {
 	struct thread *cur = thread_current();
 	struct file **fdt = cur->fdTable;
-
 	//파일 개수 및 새로 열 파일의 fd값 raise
 	while(cur->fdIdx<FDCOUNT_LIMIT && fdt[cur->fdIdx])
 	{
+		//printf("\n%d\n", cur->fdIdx);
 		cur->fdIdx++;
 	}
 
@@ -322,4 +329,14 @@ unsigned tell(int fd)
 	if (fileobj <= 2)
 		return;
 	return fileobj->pos;
+}
+
+int wait (tid_t tid)
+{
+	process_wait(tid);
+}
+
+tid_t fork(const char *thread_name, struct intr_frame *f)
+{
+	return process_fork(thread_name, f);
 }

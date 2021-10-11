@@ -113,7 +113,7 @@ dir_lookup (const struct dir *dir, const char *name,
 		*inode = inode_open (e.inode_sector);
 	else
 		*inode = NULL;
-
+	//printf("\ninode : %s\n", name);
 	return *inode != NULL;
 }
 
