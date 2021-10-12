@@ -219,7 +219,8 @@ __do_fork (void *aux) {
 			if (dupCount < MAPLEN)
 			{
 				map[dupCount].key = file;
-				map[dupCount++].value = new_file;
+				map[dupCount].value = new_file;
+				dupCount++;
 			}
 		}
 	}
@@ -473,7 +474,8 @@ load (const char *file_name, struct intr_frame *if_) {
 		printf ("load: %s: open failed\n", argv[0]);
 		goto done;
 	}
-
+	t->running = file;
+	file_deny_write(file);
 	/* Read and verify executable header. */
 	if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
 			|| memcmp (ehdr.e_ident, "\177ELF\2\1\1", 7)
@@ -552,10 +554,11 @@ load (const char *file_name, struct intr_frame *if_) {
 	
 	success = true;
 	
-
+	
 done:
 	/* We arrive here whether the load is successful or not. */
-	file_close (file);
+	//file_close (file);
+	
 	return success;
 }
 
