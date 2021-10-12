@@ -31,6 +31,7 @@ void seek(int fd, unsigned position);
 unsigned tell(int fd);
 int wait (tid_t tid);
 tid_t fork(const char *thread_name, struct intr_frame *f);
+int dup2(int oldfd, int newfd);
 
 /*              system call need func by inkyu            */
 int add_file_to_fdt(struct file *file);
@@ -116,6 +117,9 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	case SYS_FORK:
 		f->R.rax = fork(f->R.rdi, f);
 		break;
+	case SYS_DUP2:
+		f->R.rax = dup2(f->R.rdi, f->R.rsi);
+		break;
 	default:
 		break;
 	}
@@ -151,15 +155,15 @@ int
 open (const char *file) {
 	check_address(file);
 	struct file *fileobj = filesys_open(file);
-
 	if (fileobj == NULL)
 		return -1;
 	
 	/*   아직 file이 막 open되었는데 다른 process들이 접근하여 파일을 수정해주어서는 안된다     */
 	/* 때문에 현재 thread에 실행예정인 file의 주소를 넣어주고 접근을 못하게 막아준다. */
-
-	if(strcmp(thread_name(), file) == 0)
+	if(strcmp(thread_name(), file) == 0){
 		file_deny_write(fileobj);
+		}
+
 	int fd = add_file_to_fdt(fileobj);
 	
 	if(fd == -1){
@@ -178,16 +182,25 @@ void close(int fd)
 	if(objfile == NULL)
 		return;
 
+	if (fd == 0 || objfile == STDIN)
+	{
+		cur->stdin_count--;
+	}
+	else if (fd == 1 || objfile == STDOUT)
+	{
+		cur->stdout_count--;
+	}
+
 	if (fd <= 1 || objfile <= 2)
 		return;
 
 /*      table 에서 삭제           */
 	remove_file_from_fdt(fd);
 
-	//if(objfile->dupCount == 0)
+	if(objfile->dupCount == 0)
 		file_close(objfile);
-	//else if(objfile->dupCount > 0)
-		//objfile->dupCount--;
+	else if(objfile->dupCount > 0)
+		objfile->dupCount--;
 
 	return;
 }
@@ -264,11 +277,13 @@ int read (int fd , void *buffer, unsigned size)
 {
 	check_address(buffer);
 	int length;
+	struct thread *cur = thread_current();
 	struct file *fileobj = find_file_by_fd(fd);
 	if(fileobj == NULL)
 		return -1;
 	
-	if(fd == 0)
+/*     extra 문제에서 더이상 stdin이 연결된애가 없으면 읽기 금지      */
+	if(fd == 0 && cur->stdin_count!=0)
 	{
 		int i;
 			unsigned char *buf = buffer;
@@ -284,7 +299,7 @@ int read (int fd , void *buffer, unsigned size)
 	else if(fd == 1){
 		length = -1;
 	}
-	else{
+	else if(fd>1){
 		lock_acquire(&file_lock);
 		length = file_read(fileobj, buffer, size);
 		lock_release(&file_lock);
@@ -296,14 +311,15 @@ int write(int fd, const void *buffer, unsigned size)
 {
 	check_address(buffer);
 	int length;
-	
+	struct thread *cur = thread_current();
 	struct file *fileobj = find_file_by_fd(fd);
 	
 	if (fileobj == NULL)
 		return -1;
 
 /*        fd가 stdout인경우 putbuf를 이용하여 화면에 출력          */
-	if(fileobj == STDOUT){
+/*     extra 문제에서 더이상 stdout이 연결된애가 없으면 쓰기 금지      */
+	if(fileobj == STDOUT && cur->stdout_count != 0){
 		//printf("\n%d : %p\n", fd, fileobj);
 		putbuf(buffer, size);
 		length = size;
@@ -311,7 +327,7 @@ int write(int fd, const void *buffer, unsigned size)
 	else if(fileobj == STDIN){
 		length = -1;
 	}
-	else{
+	else if(fileobj>2){
 		lock_acquire(&file_lock);
 		length = file_write(fileobj, buffer, size);
 		lock_release(&file_lock);
@@ -345,4 +361,25 @@ int wait (tid_t tid)
 tid_t fork(const char *thread_name, struct intr_frame *f)
 {
 	return process_fork(thread_name, f);
+}
+
+int dup2(int oldfd, int newfd)
+{
+	struct thread *cur = thread_current();
+	struct file *objfile = find_file_by_fd(oldfd);
+	if (objfile == NULL)
+		return -1;
+	if (oldfd == newfd)
+		return newfd;
+
+	if (objfile == STDIN)
+		cur->stdin_count++;
+	else if (objfile == STDOUT)
+		cur->stdout_count++;
+	else
+		objfile->dupCount++;
+	close(newfd);
+	cur->fdTable[newfd] = objfile;
+
+	return newfd;
 }

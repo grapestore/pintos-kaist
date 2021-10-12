@@ -41,6 +41,8 @@ file_duplicate (struct file *file) {
 		nfile->pos = file->pos;
 		if (file->deny_write)
 			file_deny_write (nfile);
+		/* fork 됬다는건 새로울 파일을 reopen했으니까 각파일을 참조하고있는지 복사해줘야됨*/
+		nfile->dupCount = file->dupCount;
 	}
 	return nfile;
 }

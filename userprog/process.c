@@ -183,23 +183,44 @@ __do_fork (void *aux) {
 
 	if (parent->fdIdx == FDCOUNT_LIMIT)
 		goto error;
-	
+
 	/*        자식 프로세스에 부모프로세스 파일 복사       */
+	const int MAPLEN = 10;
+	struct MapElem map[10]; // key - parent's struct file * , value - child's newly created struct file *
+	int dupCount = 0;		// index for filling map
+
 	for (int i = 0; i < FDCOUNT_LIMIT; i++)
 	{
 		struct file *file = parent->fdTable[i];
 		if (file == NULL)
 			continue;
+
+		// Project2-extra) linear search on key-pair array
+		// If 'file' is already duplicated in child, don't duplicate again but share it
 		bool found = false;
-		if(!found)
+		for (int j = 0; j < MAPLEN; j++)
+		{
+			if (map[j].key == file)
+			{
+				found = true;
+				current->fdTable[i] = map[j].value;
+				break;
+			}
+		}
+		if (!found)
 		{
 			struct file *new_file;
-			if(file>2)
+			if (file > 2)
 				new_file = file_duplicate(file);
 			else
-				new_file = file;
-			//file->dupCount++;
+				new_file = file; // 1 STDIN, 2 STDOUT
+
 			current->fdTable[i] = new_file;
+			if (dupCount < MAPLEN)
+			{
+				map[dupCount].key = file;
+				map[dupCount++].value = new_file;
+			}
 		}
 	}
 	current->fdIdx = parent->fdIdx;
@@ -308,14 +329,14 @@ process_exit (void) {
 	palloc_free_multiple(cur->fdTable, FDT_PAGES);
 
 	/* file deny 부분 cur->running에는 실행중이 file의 주소가 저장되있음       */
-	/* 때문에 더이상 다른 process(kernel)가 접근 못하도록 file close 해줘야돰    */
-	//file_close(cur->running);
+	/* 때문에 더이상 다른 process(kernel)가 접근 할수있도록 allow해줘야됨*/
+	file_close(cur->running);
 
 	process_cleanup ();
 
 	sema_up(&cur->wait_sema);
 	sema_down(&cur->free_sema);
-
+	
 }
 
 /* Free the current process's resources. */
