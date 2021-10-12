@@ -161,7 +161,7 @@ open (const char *file) {
 	/*   아직 file이 막 open되었는데 다른 process들이 접근하여 파일을 수정해주어서는 안된다     */
 	/* 때문에 현재 thread에 실행예정인 file의 주소를 넣어주고 접근을 못하게 막아준다. */
 	if(strcmp(thread_name(), file) == 0){
-		file_deny_write(fileobj);
+		//file_deny_write(fileobj);
 		}
 
 	int fd = add_file_to_fdt(fileobj);
