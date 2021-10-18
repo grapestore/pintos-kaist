@@ -37,6 +37,7 @@ int dup2(int oldfd, int newfd);
 int add_file_to_fdt(struct file *file);
 static struct file *find_file_by_fd(int fd);
 void check_address(const uint64_t *uaddr);
+static void check_writable_addr(void* ptr);
 void remove_file_from_fdt(int fd);
 
 const int STDIN = 1;
@@ -248,6 +249,8 @@ void check_address(const uint64_t *uaddr)
 	{
 		exit(-1);
 	}
+	struct page *page = spt_find_page (&thread_current() -> spt, uaddr);
+	if (page == NULL) exit(-1);
 }
 
 int exec(const *cmd_line)
@@ -276,6 +279,7 @@ void remove_file_from_fdt(int fd)
 int read (int fd , void *buffer, unsigned size)
 {
 	check_address(buffer);
+	check_writable_addr(buffer);
 	int length;
 	struct thread *cur = thread_current();
 	struct file *fileobj = find_file_by_fd(fd);
@@ -382,4 +386,10 @@ int dup2(int oldfd, int newfd)
 	cur->fdTable[newfd] = objfile;
 
 	return newfd;
+}
+
+static void
+check_writable_addr(void* ptr){
+	struct page *page = spt_find_page (&thread_current() -> spt, ptr);
+	if (page == NULL || !page->writable) exit(-1);
 }

@@ -139,9 +139,10 @@ page_fault (struct intr_frame *f) {
 	not_present = (f->error_code & PF_P) == 0;
 	write = (f->error_code & PF_W) != 0;
 	user = (f->error_code & PF_U) != 0;
-
+	//printf("\ncjecl\n");
 #ifdef VM
 	/* For project 3 and later. */
+	//printf("\ncjecl\n");
 	if (vm_try_handle_fault (f, fault_addr, user, write, not_present))
 		return;
 #endif
@@ -158,7 +159,7 @@ page_fault (struct intr_frame *f) {
 
 	/* child-bad test가 rsp의 위피를 바꾸는데 page fault는 projcet 3에서 다루므로*/
 	/* 일단 exit을 통해 pass를 시킨다       */
-	//kill (f);
-	exit(-1);
+	kill (f);
+	//exit(-1);
 }
 

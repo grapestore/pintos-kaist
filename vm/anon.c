@@ -17,6 +17,13 @@ static const struct page_operations anon_ops = {
 	.type = VM_ANON,
 };
 
+static const struct page_operations anon_stack_ops = {
+	.swap_in = anon_swap_in,
+	.swap_out = anon_swap_out,
+	.destroy = anon_destroy,
+	.type = VM_ANON | VM_MARKER_0,
+};
+
 /* Initialize the data for anonymous pages */
 void
 vm_anon_init (void) {
@@ -29,8 +36,11 @@ bool
 anon_initializer (struct page *page, enum vm_type type, void *kva) {
 	/* Set up the handler */
 	page->operations = &anon_ops;
-
+	if (type & VM_MARKER_0) page->operations = &anon_stack_ops;
 	struct anon_page *anon_page = &page->anon;
+	anon_page->owner = thread_current ();
+	anon_page->swap_slot_idx = INVALID_SLOT_IDX;
+	return true;
 }
 
 /* Swap in the page by read contents from the swap disk. */

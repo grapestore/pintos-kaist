@@ -35,4 +35,7 @@ void file_seek (struct file *, off_t);
 off_t file_tell (struct file *);
 off_t file_length (struct file *);
 
+
+bool file_map_initializer (struct page *page, enum vm_type type, void *kva);
+
 #endif /* filesys/file.h */

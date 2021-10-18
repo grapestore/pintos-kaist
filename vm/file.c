@@ -1,6 +1,7 @@
 /* file.c: Implementation of memory backed file object (mmaped object). */
 
 #include "vm/vm.h"
+#include "filesys/file.h"
 
 static bool file_backed_swap_in (struct page *page, void *kva);
 static bool file_backed_swap_out (struct page *page);
@@ -55,4 +56,16 @@ do_mmap (void *addr, size_t length, int writable,
 /* Do the munmap */
 void
 do_munmap (void *addr) {
+}
+
+/* Initialize the file mapped page */
+bool
+file_map_initializer (struct page *page, enum vm_type type, void *kva) {
+	/* Set up the handler */
+	struct file* file = ((struct mmap_info*)page ->uninit.aux)->file;
+	page->operations = &file_ops;
+
+	struct file_page *file_page = &page->file;
+	file_page -> file = file;
+	return true;
 }

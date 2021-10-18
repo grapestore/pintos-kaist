@@ -19,6 +19,7 @@
         "filesys.h": "c",
         "boundary.h": "c",
         "main.h": "c",
-        "lib.h": "c"
+        "lib.h": "c",
+        "vm.h": "c"
     }
 }
