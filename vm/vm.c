@@ -12,6 +12,9 @@
 
 /* Initializes the virtual memory subsystem by invoking each subsystem's
  * intialize codes. */
+
+static struct lock spt_kill_lock;
+
 void
 vm_init (void) {
 	vm_anon_init ();
@@ -22,6 +25,7 @@ vm_init (void) {
 	register_inspect_intr ();
 	/* DO NOT MODIFY UPPER LINES. */
 	/* TODO: Your code goes here. */
+	lock_init(&spt_kill_lock);
 }
 
 /* Get the type of the page. This function is useful if you want to know the
@@ -49,8 +53,6 @@ static struct frame *vm_evict_frame (void);
 bool
 vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		vm_initializer *init, void *aux) {
-
-	ASSERT (VM_TYPE(type) != VM_UNINIT)
 
 	struct supplemental_page_table *spt = &thread_current ()->spt;
 	bool writable_aux = writable;
@@ -221,14 +223,43 @@ supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 }
 
 /* Copy supplemental page table from src to dst */
-bool
-supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED,
-		struct supplemental_page_table *src UNUSED) {
+bool supplemental_page_table_copy(struct supplemental_page_table *dst UNUSED,
+																	struct supplemental_page_table *src UNUSED)
+{
+	struct hash_iterator i;
+	hash_first(&i, src->page_table);
+	while (hash_next(&i))
+	{
+		struct page *page = hash_entry (hash_cur (&i), struct page, hash_elem);
+		/* Handle ANON/FILE page*/
+		if (page_get_type(page) == VM_ANON)
+		{
+			if (!vm_alloc_page(page->operations->type, page->va, page->writable))
+				return false;
+			struct page *new_page = spt_find_page(&thread_current()->spt, page->va);
+			if (!vm_do_claim_page(new_page))
+				return false;
+			memcpy(new_page->frame->kva, page->frame->kva, PGSIZE);
+		}
+	}
+}
+
+static void
+spt_destroy (struct hash_elem *e, void *aux UNUSED){
+	struct page *page = hash_entry (e, struct page, hash_elem);
+	ASSERT (page != NULL);
+	destroy (page);
+	free (page);
 }
 
 /* Free the resource hold by the supplemental page table */
 void
-supplemental_page_table_kill (struct supplemental_page_table *spt UNUSED) {
+supplemental_page_table_kill (struct supplemental_page_table *spt) {
 	/* TODO: Destroy all the supplemental_page_table hold by thread and
 	 * TODO: writeback all the modified contents to the storage. */
+	if (spt -> page_table == NULL) return;
+	lock_acquire(&spt_kill_lock);
+	hash_destroy(spt->page_table, spt_destroy);
+	free(spt->page_table);
+	lock_release(&spt_kill_lock);
 }

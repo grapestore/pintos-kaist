@@ -24,6 +24,8 @@ static const struct page_operations anon_stack_ops = {
 	.type = VM_ANON | VM_MARKER_0,
 };
 
+static struct bitmap *swap_table;
+
 /* Initialize the data for anonymous pages */
 void
 vm_anon_init (void) {
@@ -58,5 +60,16 @@ anon_swap_out (struct page *page) {
 /* Destroy the anonymous page. PAGE will be freed by the caller. */
 static void
 anon_destroy (struct page *page) {
-	struct anon_page *anon_page = &page->anon;
+	if (&page->frame!= NULL){
+		//list_remove (&page->frame->elem);
+		//free(page->frame);
+	}
+	else {
+		// Swapped anon page case
+		struct anon_page *anon_page = &page->anon;
+		ASSERT (anon_page->swap_slot_idx != INVALID_SLOT_IDX);
+
+		// Clear swap table
+		bitmap_set (swap_table, anon_page->swap_slot_idx, false);
+	}
 }

@@ -245,10 +245,11 @@ static struct file *find_file_by_fd(int fd)
 void check_address(const uint64_t *uaddr)
 {
 	struct thread *cur = thread_current();
-	if (uaddr == NULL || !(is_user_vaddr(uaddr)) || pml4_get_page(cur->pml4, uaddr) == NULL)
-	{
-		exit(-1);
-	}
+	
+	if (uaddr == NULL) exit(-1);
+	if (!(is_user_vaddr(uaddr))) exit(-1);
+	uint64_t *pte = pml4e_walk(cur->pml4, (const uint64_t) uaddr, 0);
+	if (pte == NULL) exit(-1);
 	struct page *page = spt_find_page (&thread_current() -> spt, uaddr);
 	if (page == NULL) exit(-1);
 }
@@ -278,6 +279,7 @@ void remove_file_from_fdt(int fd)
 
 int read (int fd , void *buffer, unsigned size)
 {
+	
 	check_address(buffer);
 	check_writable_addr(buffer);
 	int length;

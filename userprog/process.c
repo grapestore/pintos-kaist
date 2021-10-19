@@ -264,7 +264,7 @@ process_exec (void *f_name) {
 
 	/* We first kill the current conxtext */
 	process_cleanup ();
-	
+	supplemental_page_table_init (&thread_current () -> spt);
 	/* And then load the binary */
 	success = load (file_name, &_if);
 
@@ -333,7 +333,10 @@ process_exit (void) {
 	/* 때문에 더이상 다른 process(kernel)가 접근 할수있도록 allow해줘야됨*/
 	file_close(cur->running);
 
-	process_cleanup ();
+	if (cur->pml4 != NULL){
+		// Print termination message when user process terminates
+		process_cleanup ();
+	}
 
 	sema_up(&cur->wait_sema);
 	sema_down(&cur->free_sema);
