@@ -166,11 +166,11 @@ open (const char *file) {
 		}
 
 	int fd = add_file_to_fdt(fileobj);
-	
+	lock_acquire(&file_lock);
 	if(fd == -1){
 		file_close(fileobj);
 	}
-
+	lock_release(&file_lock);
 	return fd;
 }
 
@@ -197,12 +197,12 @@ void close(int fd)
 
 /*      table 에서 삭제           */
 	remove_file_from_fdt(fd);
-
+	lock_acquire(&file_lock);
 	if(objfile->dupCount == 0)
 		file_close(objfile);
 	else if(objfile->dupCount > 0)
 		objfile->dupCount--;
-
+	lock_release(&file_lock);
 	return;
 }
 
@@ -345,7 +345,9 @@ void seek(int fd, unsigned position)
 	struct file *fileobj = find_file_by_fd(fd);
 	if(fileobj <= 2)
 		return;
+	lock_acquire(&file_lock);
 	fileobj->pos = position;
+	lock_release(&file_lock);
 	return;
 }
 
