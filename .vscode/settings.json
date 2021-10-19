@@ -20,6 +20,8 @@
         "boundary.h": "c",
         "main.h": "c",
         "lib.h": "c",
-        "vm.h": "c"
+        "vm.h": "c",
+        "palloc.h": "c",
+        "vaddr.h": "c"
     }
 }

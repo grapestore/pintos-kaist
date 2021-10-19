@@ -139,7 +139,8 @@ struct thread
 	/* Table for whole virtual memory owned by thread. */
 	struct supplemental_page_table spt;
 #endif
-
+/* saving stack top point */
+	uintptr_t saved_sp;
 	/* Owned by thread.c. */
 	struct intr_frame tf; /* Information for switching */
 	unsigned magic;		  /* Detects stack overflow. */

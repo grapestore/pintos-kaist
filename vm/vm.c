@@ -54,6 +54,7 @@ bool
 vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		vm_initializer *init, void *aux) {
 
+
 	struct supplemental_page_table *spt = &thread_current ()->spt;
 	bool writable_aux = writable;
 
@@ -142,6 +143,18 @@ vm_get_frame (void) {
 /* Growing the stack. */
 static void
 vm_stack_growth (void *addr UNUSED) {
+	void *stack_top = pg_round_down (addr);
+	size_t new_stack_size = USER_STACK - (uintptr_t)stack_top;
+	if (new_stack_size > (1 << 20)) PANIC("Stack limit exceeded!\n"); // 1MB
+
+/* spt table의 new stack page단위로 업로드 */
+	void *spt_stack_page_update = stack_top;
+	while((uintptr_t) spt_stack_page_update < USER_STACK &&
+	vm_alloc_page(VM_ANON | VM_MARKER_1, spt_stack_page_update, true)){
+		spt_stack_page_update += PGSIZE;
+	};
+	/* pml4에 stack 영역 올려줌 */
+	vm_claim_page(stack_top);
 }
 
 /* Handle the fault on write_protected page */
@@ -160,6 +173,12 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
 	if (is_kernel_vaddr (addr) && user) return false;
+	void *cur_stack_top = pg_round_down (f->rsp);
+	if (write && (cur_stack_top - PGSIZE <= addr &&
+	      (uintptr_t) addr < USER_STACK)) {
+	  vm_stack_growth (addr);
+	  return true;
+	}
 	if (page == NULL) return false;
 	if (write && !not_present) return vm_handle_wp (page);
 	return vm_do_claim_page (page);

@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <syscall-nr.h>
 #include "intrinsic.h"
+#include "vm/vm.h"
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
@@ -395,5 +396,5 @@ int dup2(int oldfd, int newfd)
 static void
 check_writable_addr(void* ptr){
 	struct page *page = spt_find_page (&thread_current() -> spt, ptr);
-	if (page == NULL || !page->writable) exit(-1);
+	if (page == NULL || !(page->writable)) exit(-1);
 }
