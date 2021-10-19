@@ -336,6 +336,7 @@ process_exit (void) {
 	if (cur->pml4 != NULL){
 		// Print termination message when user process terminates
 		process_cleanup ();
+		printf ("%s: exit(%d)\n", cur->name, cur->exit_status);
 	}
 
 	sema_up(&cur->wait_sema);

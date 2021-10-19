@@ -136,8 +136,6 @@ void exit(int status)
 {
 	struct thread *cur = thread_current();
 	cur->exit_status = status;
-
-	printf("%s: exit(%d)\n", thread_name(), status); // Process Termination Message
 	thread_exit();
 }
 
@@ -156,15 +154,11 @@ bool remove(const char *file)
 int
 open (const char *file) {
 	check_address(file);
+	
 	struct file *fileobj = filesys_open(file);
 	if (fileobj == NULL)
 		return -1;
 	
-	/*   아직 file이 막 open되었는데 다른 process들이 접근하여 파일을 수정해주어서는 안된다     */
-	/* 때문에 현재 thread에 실행예정인 file의 주소를 넣어주고 접근을 못하게 막아준다. */
-	if(strcmp(thread_name(), file) == 0){
-		//file_deny_write(fileobj);
-		}
 
 	int fd = add_file_to_fdt(fileobj);
 	lock_acquire(&file_lock);
@@ -251,8 +245,11 @@ void check_address(const uint64_t *uaddr)
 	if (!(is_user_vaddr(uaddr))) exit(-1);
 	uint64_t *pte = pml4e_walk(cur->pml4, (const uint64_t) uaddr, 0);
 	if (pte == NULL) exit(-1);
+	
 	struct page *page = spt_find_page (&thread_current() -> spt, uaddr);
+	
 	if (page == NULL) exit(-1);
+	
 }
 
 int exec(const *cmd_line)
@@ -282,7 +279,9 @@ int read (int fd , void *buffer, unsigned size)
 {
 	
 	check_address(buffer);
+	
 	check_writable_addr(buffer);
+	
 	int length;
 	struct thread *cur = thread_current();
 	struct file *fileobj = find_file_by_fd(fd);
@@ -327,7 +326,6 @@ int write(int fd, const void *buffer, unsigned size)
 /*        fd가 stdout인경우 putbuf를 이용하여 화면에 출력          */
 /*     extra 문제에서 더이상 stdout이 연결된애가 없으면 쓰기 금지      */
 	if(fileobj == STDOUT && cur->stdout_count != 0){
-		//printf("\n%d : %p\n", fd, fileobj);
 		putbuf(buffer, size);
 		length = size;
 	}
