@@ -63,8 +63,9 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		/* TODO: Create the page, fetch the initialier according to the VM type,
 		 * TODO: and then create "uninit" page struct by calling uninit_new. You
 		 * TODO: should modify the field after calling the uninit_new. */
-		ASSERT(VM_TYPE(type) != VM_UNINIT);
+		ASSERT(type != VM_UNINIT);
 		struct page* page = malloc (sizeof (struct page));
+		//printf("\n\n%p\n\n", page);
 		/* TODO: Insert the page into the spt. */
 		if (VM_TYPE(type) == VM_ANON){
 			uninit_new (page, upage, init, type, aux, anon_initializer);
@@ -77,7 +78,6 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		spt_insert_page (spt, page);
 		return true;
 	}
-err:
 	return false;
 }
 
@@ -150,7 +150,7 @@ vm_stack_growth (void *addr UNUSED) {
 /* spt table의 new stack page단위로 업로드 */
 	void *spt_stack_page_update = stack_top;
 	while((uintptr_t) spt_stack_page_update < USER_STACK &&
-	vm_alloc_page(VM_ANON | VM_MARKER_1, spt_stack_page_update, true)){
+	vm_alloc_page(VM_ANON | VM_MARKER_0, spt_stack_page_update, true)){
 		spt_stack_page_update += PGSIZE;
 	};
 	/* pml4에 stack 영역 올려줌 */
@@ -245,14 +245,16 @@ supplemental_page_table_init (struct supplemental_page_table *spt UNUSED) {
 bool supplemental_page_table_copy(struct supplemental_page_table *dst UNUSED,
 																	struct supplemental_page_table *src UNUSED)
 {
+	
 	/*Iterate Source spt hash table*/
 	struct hash_iterator i;
 	hash_first (&i, src -> page_table);
 	while (hash_next (&i)) {
 		struct page *page = hash_entry (hash_cur (&i), struct page, hash_elem);
-
+		
 		/*Handle UNINIT page*/
 		if (page -> operations -> type == VM_UNINIT){
+			
 			vm_initializer* init = page ->uninit.init;
 			bool writable = page -> writable;
 			int type = page ->uninit.type;
@@ -272,16 +274,18 @@ bool supplemental_page_table_copy(struct supplemental_page_table *dst UNUSED,
 		
 		/* Handle ANON/FILE page*/
 		else if (page_get_type(page) == VM_ANON){
+			
 			if (!vm_alloc_page (page -> operations -> type, page -> va, page -> writable))
-				return false;
+				{printf("\n\nmmap copy fail\n\n"); return false;}
 			struct page* new_page = spt_find_page (&thread_current () -> spt, page -> va);
 			if (!vm_do_claim_page (new_page))
-				return false;
+				{printf("\n\nmmap copy fail\n\n"); return false;}
 			memcpy (new_page -> frame -> kva, page -> frame -> kva, PGSIZE);
 		}
 		else if (page_get_type(page) == VM_FILE){
 			//Do nothing(it should not inherit mmap)
 		}
+		
 	}
 	return true;
 }

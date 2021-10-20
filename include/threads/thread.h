@@ -139,6 +139,7 @@ struct thread
 	/* Table for whole virtual memory owned by thread. */
 	struct supplemental_page_table spt;
 #endif
+struct list mmap_file_list;
 /* saving stack top point */
 	uintptr_t saved_sp;
 	/* Owned by thread.c. */

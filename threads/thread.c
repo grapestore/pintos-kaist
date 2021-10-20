@@ -111,6 +111,8 @@ void thread_init(void)
 	list_init(&sleep_list);
 	list_init(&ready_list);
 	list_init(&destruction_req);
+	lock_init(&filesys_lock);
+	
 
 	/* Set up a thread structure for the running thread. */
 	initial_thread = running_thread();
@@ -496,6 +498,7 @@ init_thread(struct thread *t, const char *name, int priority)
 	sema_init(&t->wait_sema, 0);
 	sema_init(&t->fork_sema, 0);
 	sema_init(&t->free_sema, 0);
+	list_init(&t->mmap_file_list);
 
 	// 2-5
 	t->running = NULL;

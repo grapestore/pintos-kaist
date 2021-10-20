@@ -85,9 +85,11 @@ process_fork (const char *name, struct intr_frame *if_) {
 	tid_t tid = thread_create (name, PRI_DEFAULT, __do_fork, cur);
 	if(tid == TID_ERROR)
 		return TID_ERROR;
-
+	
 	struct thread *child = get_child_with_pid(tid);
+	
 	sema_down(&child->fork_sema);
+	//printf("\n\ncheck : %d\n\n", child->exit_status);
 	if (child->exit_status == -1)
 		return TID_ERROR;
 	
@@ -171,6 +173,7 @@ __do_fork (void *aux) {
 	if (!supplemental_page_table_copy (&current->spt, &parent->spt))
 		goto error;
 #else
+
 	if (!pml4_for_each (parent->pml4, duplicate_pte, parent))
 		goto error;
 #endif
@@ -253,7 +256,7 @@ int
 process_exec (void *f_name) {
 	char *file_name = f_name;
 	bool success;
-
+	
 	/* We cannot use the intr_frame in the thread structure.
 	 * This is because when current thread rescheduled,
 	 * it stores the execution information to the member. */
@@ -261,13 +264,13 @@ process_exec (void *f_name) {
 	_if.ds = _if.es = _if.ss = SEL_UDSEG;
 	_if.cs = SEL_UCSEG;
 	_if.eflags = FLAG_IF | FLAG_MBS;
-
+	
 	/* We first kill the current conxtext */
 	process_cleanup ();
 	supplemental_page_table_init (&thread_current () -> spt);
 	/* And then load the binary */
 	success = load (file_name, &_if);
-
+	
 	/* If load failed, quit. */
 	if (!success)
 	{
@@ -449,11 +452,10 @@ static bool
 load (const char *file_name, struct intr_frame *if_) {
 	struct thread *t = thread_current ();
 	struct ELF ehdr;
-	struct file *file = NULL;
 	off_t file_ofs;
 	bool success = false;
 	int i;
-
+	
 	char *token, *save_ptr;
 	char *argv[64];
 	int argc = 0;
@@ -471,9 +473,11 @@ load (const char *file_name, struct intr_frame *if_) {
 	if (t->pml4 == NULL)
 		goto done;
 	process_activate (thread_current ());
-
+	
 	/* Open executable file. */
-	file = filesys_open (argv[0]);
+	lock_acquire(&filesys_lock);
+	struct file *file = filesys_open (argv[0]);
+	lock_release(&filesys_lock);
 	if (file == NULL) {
 		printf ("load: %s: open failed\n", argv[0]);
 		goto done;

@@ -33,6 +33,8 @@ unsigned tell(int fd);
 int wait (tid_t tid);
 tid_t fork(const char *thread_name, struct intr_frame *f);
 int dup2(int oldfd, int newfd);
+static void munmap(void* addr);
+static void* mmap(void *addr, size_t length, int writable, int fd, off_t offset);
 
 /*              system call need func by inkyu            */
 int add_file_to_fdt(struct file *file);
@@ -122,6 +124,12 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	case SYS_DUP2:
 		f->R.rax = dup2(f->R.rdi, f->R.rsi);
 		break;
+	case SYS_MMAP:
+		f->R.rax = (uint64_t) mmap((void*) f->R.rdi, (size_t) f->R.rsi, (int) f->R.rdx, (int) f->R.r10, (off_t) f->R.r8);
+		break;
+	case SYS_MUNMAP:
+		munmap((void*) f->R.rdi);
+		break;
 	default:
 		break;
 	}
@@ -158,7 +166,6 @@ open (const char *file) {
 	struct file *fileobj = filesys_open(file);
 	if (fileobj == NULL)
 		return -1;
-	
 
 	int fd = add_file_to_fdt(fileobj);
 	lock_acquire(&file_lock);
@@ -174,7 +181,7 @@ void close(int fd)
 	/*       fd를이용하여 file 받음 by inkyu           */
 	struct file *objfile = find_file_by_fd(fd);
 	struct thread *cur = thread_current();
-
+	
 	if(objfile == NULL)
 		return;
 
@@ -255,11 +262,12 @@ void check_address(const uint64_t *uaddr)
 int exec(const *cmd_line)
 {
 	check_address(cmd_line);
+	
 	char *file_name[30];
 	memcpy(file_name, cmd_line, strlen(cmd_line) + 1);
 	if(process_exec(file_name) == -1)
 		return -1;
-
+	
 	NOT_REACHED();
 	return 0;
 }
@@ -285,6 +293,7 @@ int read (int fd , void *buffer, unsigned size)
 	int length;
 	struct thread *cur = thread_current();
 	struct file *fileobj = find_file_by_fd(fd);
+	
 	if(fileobj == NULL)
 		return -1;
 	
@@ -307,7 +316,9 @@ int read (int fd , void *buffer, unsigned size)
 	}
 	else if(fd>1){
 		lock_acquire(&file_lock);
+		//printf("\n\n%p\n\n", buffer);
 		length = file_read(fileobj, buffer, size);
+		//printf("\n\n%s\n\n", buffer);
 		lock_release(&file_lock);
 	}
 	return length;
@@ -395,4 +406,30 @@ static void
 check_writable_addr(void* ptr){
 	struct page *page = spt_find_page (&thread_current() -> spt, ptr);
 	if (page == NULL || !(page->writable)) exit(-1);
+}
+
+
+static void*
+mmap(void *addr, size_t length, int writable, int fd, off_t offset)
+{
+	if(fd == 0 || fd == 1) return NULL;
+	if (addr == 0 || (!is_user_vaddr(addr))) return NULL;
+	if ((uint64_t)addr % PGSIZE != 0) return NULL;
+	if (offset % PGSIZE != 0) return NULL;
+	if ((uint64_t)addr + length == 0) return NULL;
+	if (!is_user_vaddr((uint64_t)addr + length)) return NULL;
+	for (uint64_t i = (uint64_t) addr; i < (uint64_t) addr + length; i += PGSIZE){
+		if (spt_find_page (&thread_current() -> spt, (void*) i)!=NULL) return NULL;
+	}
+	if (length == 0) return NULL;
+
+	struct file* file = find_file_by_fd(fd);
+	if(file == NULL) return NULL;
+	return do_mmap (addr, length, writable, file, offset);
+	
+}
+
+static void
+munmap(void* addr){
+	do_munmap(addr);
 }
