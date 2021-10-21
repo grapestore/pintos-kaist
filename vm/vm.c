@@ -64,7 +64,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		 * TODO: and then create "uninit" page struct by calling uninit_new. You
 		 * TODO: should modify the field after calling the uninit_new. */
 		ASSERT(type != VM_UNINIT);
-		struct page* page = malloc (sizeof (struct page));
+		struct page* page = calloc (sizeof (struct page),1);
 		//printf("\n\n%p\n\n", page);
 		/* TODO: Insert the page into the spt. */
 		if (VM_TYPE(type) == VM_ANON){

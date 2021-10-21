@@ -18,6 +18,7 @@ static const struct page_operations file_ops = {
 	.type = VM_FILE,
 };
 
+
 /* The initializer of file vm */
 void
 vm_file_init (void) {
@@ -54,9 +55,10 @@ file_backed_destroy (struct page *page) {
 
 struct mmap_file_info{
 	uint64_t mapid;
+	uint64_t end;
 	struct list_elem elem;
 	struct file* file;
-	struct list* vme_list
+	struct list* vme_list;
 };
 
 static bool
@@ -95,13 +97,13 @@ do_mmap (void *addr, size_t length, int writable,
 			off_t read_ofs = offset;
 			void * ori_addr = addr;
 			size_t read_bytes = length > file_length(file) ? file_length(file) : length;
-    	size_t zero_bytes = PGSIZE - read_bytes % PGSIZE;
+    	size_t zero_bytes = PGSIZE - read_bytes;
 
 			while (read_bytes > 0 || zero_bytes > 0){
 				size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
 				size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
-				struct mmap_info *aux = malloc(sizeof(struct mmap_info));
+				struct mmap_info *aux = calloc(sizeof(struct mmap_info),1);
 				
 				aux->file = file_reopen(file);
 				aux->offset = read_ofs;
@@ -117,6 +119,7 @@ do_mmap (void *addr, size_t length, int writable,
 			
 			struct mmap_file_info* mfi = malloc (sizeof (struct mmap_file_info));
 			mfi->mapid = ori_addr;
+			mfi->end = (uint64_t) pg_round_down((uint64_t) ori_addr + read_bytes -1);
 			//printf("\n\ncheck : %p thread :%s \n\n", mfi->mapid, thread_current()->name);
 			list_push_back(&thread_current()->mmap_file_list, &mfi->elem);
 			
@@ -129,26 +132,16 @@ do_munmap (void *addr) {
 	
 	if (list_empty (&thread_current()->mmap_file_list)) return;
 	struct list *mmap_list = &thread_current()->mmap_file_list;
-	
-	
 	//printf("\n\nbegin : %p end : %p\n\n", list_begin (&mmap_list), list_end (&mmap_list));
 	for (struct list_elem* i = list_begin (mmap_list); i != list_end (mmap_list); i = list_next (i))
 	{
-		
 		struct mmap_file_info* mfi = list_entry (i, struct mmap_file_info, elem);
 		//printf("\n\ncheck : %p thread :%s \n\n", mfi->mapid, thread_current()->name);
 		if (mfi -> mapid == (uint64_t) addr){
-			
-			// while(true){
-				
-			// 	struct page* page = spt_find_page(&thread_current() -> spt, addr);
-				
-			// 	//if(page == NULL || !is_user_vaddr(page)) break;
-			// 	if(page == NULL) break;
-			// 	spt_remove_page(&thread_current()->spt, page);
-				
-			// }
-			
+			for (uint64_t j = (uint64_t)addr; j<= mfi -> end; j += PGSIZE){
+				struct page* page = spt_find_page(&thread_current() -> spt, (void*) j);
+				spt_remove_page(&thread_current()->spt, page);
+			}
 			list_remove(&mfi->elem);
 			free(mfi);
 			return;

@@ -252,7 +252,8 @@ void check_address(const uint64_t *uaddr)
 	if (!(is_user_vaddr(uaddr))) exit(-1);
 	uint64_t *pte = pml4e_walk(cur->pml4, (const uint64_t) uaddr, 0);
 	if (pte == NULL) exit(-1);
-	
+	//printf("\n\ncheck address start\n\n");
+	//printf("\n\ncheck spt %p\n\n", (&thread_current() -> spt) -> page_table ->buckets);
 	struct page *page = spt_find_page (&thread_current() -> spt, uaddr);
 	
 	if (page == NULL) exit(-1);
