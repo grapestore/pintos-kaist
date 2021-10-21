@@ -28,9 +28,12 @@ vm_file_init (void) {
 bool
 file_backed_initializer (struct page *page, enum vm_type type, void *kva) {
 	/* Set up the handler */
+	struct file* file = ((struct mmap_info*)page ->uninit.aux)->file;
 	page->operations = &file_ops;
 
 	struct file_page *file_page = &page->file;
+	file_page -> file = file;
+	return true;
 }
 
 /* Swap in the page by read contents from the file. */
@@ -38,7 +41,7 @@ static bool
 file_backed_swap_in (struct page *page, void *kva) {
 	struct file_page *file_page UNUSED = &page->file;
 	if (file_page->file == NULL) return false;
-	printf("\n\ncheck : %p\n\n", page);
+	//printf("\n\ncheck : %p\n\n", page);
 	file_seek (file_page->file, file_page->ofs);
 	off_t read_size = file_read (file_page->file, kva, file_page->size);
 	if (read_size != file_page->size) return false;
@@ -103,21 +106,38 @@ lazy_load_segment (struct page *page, void *aux) {
 	/* Load the segment from the file */
 	/* This called when the first page fault occurs on address VA. */
 	/* VA is available when calling this function. */
-	struct load_info* li = (struct load_info *) aux;
+	struct mmap_info* li = (struct mmap_info *) aux;
 	if (page == NULL) return false;
-	ASSERT(li ->page_read_bytes <=PGSIZE);
-	ASSERT(li -> page_zero_bytes <= PGSIZE);
+	ASSERT(li ->read_bytes <=PGSIZE);
+	ASSERT(li ->zero_bytes <= PGSIZE);
+	
 	/* Load this page. */
-	if (li -> page_read_bytes > 0) {
-		file_seek (li -> file, li -> ofs);
-		if (file_read (li -> file, page -> va, li -> page_read_bytes) != (off_t) li -> page_read_bytes) {
+	if (li -> read_bytes > 0) {
+		file_seek (li -> file, li -> offset);
+		if (file_read (li -> file, page -> va, li -> read_bytes) != (off_t) li -> read_bytes) {
 			vm_dealloc_page (page);
 			free (li);
 			return false;
 		}
 	}
-	memset (page -> va + li -> page_read_bytes, 0, li -> page_zero_bytes);
+	
+	memset (page -> va + li -> read_bytes, 0, li -> zero_bytes);
+	
 	free (li);
+	return true;
+}
+
+static bool
+lazy_load_file (struct page* page, void* aux){
+	struct mmap_info* mi = (struct mmap_info*) aux;
+	file_seek (mi->file, mi->offset);
+	page -> file.size = file_read (mi->file, page->va, mi->read_bytes);
+	page -> file.ofs = mi->offset;
+	if (page->file.size != PGSIZE){
+		memset (page->va + page->file.size, 0, PGSIZE - page->file.size);
+	}
+	pml4_set_dirty (thread_current()->pml4, page->va, false);
+	free(mi);
 	return true;
 }
 
@@ -139,11 +159,13 @@ do_mmap (void *addr, size_t length, int writable,
 				struct mmap_info *aux = calloc(sizeof(struct mmap_info),1);
 				
 				aux->file = file_reopen(file);
+				
 				aux->offset = read_ofs;
 				aux->read_bytes = page_read_bytes;
 				aux->zero_bytes = page_zero_bytes;
 				//printf("\n\n%p\n\n", aux->file);
-				if(!vm_alloc_page_with_initializer (VM_FILE, (void*) ((uint64_t) addr), writable, lazy_load_segment, (void*) aux))
+				
+				if(!vm_alloc_page_with_initializer (VM_FILE, (void*) ((uint64_t) addr), writable, lazy_load_file, aux))
 					return;
 				read_bytes -= page_read_bytes;
 				zero_bytes -= page_zero_bytes;
@@ -184,21 +206,18 @@ do_munmap (void *addr) {
 			// 	struct mmap_info * aux = (struct box *) page->uninit.aux;
 			// }
 			/* mmap된 파일 리스트에서만 제거해준다 */
+			struct page* page = spt_find_page(&thread_current() -> spt, addr);
 			list_remove(&mfi->elem);
+			struct file_page *file_page = &page->file;
+			//if dirty, write back to file
+			if (pml4_is_dirty (thread_current() -> pml4, page -> va)){
+				/* file size 잘못들어가있음 어디서 잘못들어간거지 ?*/
+				//printf("\n\ncheck: %p\n\n", file_page->size);
+				file_seek (file_page->file, file_page->ofs);
+				file_write (file_page->file, page->va, file_page->size);
+			}
 			free(mfi);
 			return;
 		}
 	}
-}
-
-/* Initialize the file mapped page */
-bool
-file_map_initializer (struct page *page, enum vm_type type, void *kva) {
-	/* Set up the handler */
-	struct file* file = ((struct mmap_info*)page ->uninit.aux)->file;
-	page->operations = &file_ops;
-
-	struct file_page *file_page = &page->file;
-	file_page -> file = file;
-	return true;
 }

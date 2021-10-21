@@ -150,6 +150,7 @@ void exit(int status)
 bool create(const char *file, unsigned initial_size)
 {
 	check_address(file);
+	
 	return filesys_create(file, initial_size);
 }
 
@@ -168,7 +169,7 @@ open (const char *file) {
 	lock_release(&file_lock);
 	if (fileobj == NULL)
 		return -1;
-
+	
 	int fd = add_file_to_fdt(fileobj);
 	
 	if(fd == -1){

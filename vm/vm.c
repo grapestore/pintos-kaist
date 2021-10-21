@@ -76,8 +76,7 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 			uninit_new (page, upage, init, type, aux, anon_initializer);
 		}
 		else if (VM_TYPE(type) == VM_FILE){
-			//printf("\n\n%p\n\n",page);
-			uninit_new (page, upage, init, type, aux, file_map_initializer);
+			uninit_new (page, upage, init, type, aux, file_backed_initializer);
 		}
 
 		page -> writable = writable_aux;
