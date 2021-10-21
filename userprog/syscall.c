@@ -163,16 +163,18 @@ int
 open (const char *file) {
 	check_address(file);
 	
+	lock_acquire(&file_lock);
 	struct file *fileobj = filesys_open(file);
+	lock_release(&file_lock);
 	if (fileobj == NULL)
 		return -1;
 
 	int fd = add_file_to_fdt(fileobj);
-	lock_acquire(&file_lock);
+	
 	if(fd == -1){
 		file_close(fileobj);
 	}
-	lock_release(&file_lock);
+	
 	return fd;
 }
 
@@ -318,9 +320,9 @@ int read (int fd , void *buffer, unsigned size)
 	}
 	else if(fd>1){
 		lock_acquire(&file_lock);
-		//printf("\n\n%p\n\n", buffer);
+		//printf("\n\ncheck : %p\n\n", buffer);
 		length = file_read(fileobj, buffer, size);
-		//printf("\n\n%s\n\n", buffer);
+		//printf("\n\n%d\n\n", length);
 		lock_release(&file_lock);
 	}
 	return length;
@@ -359,9 +361,9 @@ void seek(int fd, unsigned position)
 	struct file *fileobj = find_file_by_fd(fd);
 	if(fileobj <= 2)
 		return;
-	lock_acquire(&file_lock);
+	//lock_acquire(&file_lock);
 	fileobj->pos = position;
-	lock_release(&file_lock);
+	//lock_release(&file_lock);
 	return;
 }
 

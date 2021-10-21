@@ -113,8 +113,8 @@ anon_swap_out (struct page *page) {
 static void
 anon_destroy (struct page *page) {
 	if (&page->frame!= NULL){
-		//list_remove (&page->frame->elem);
-		//free(page->frame);
+		// list_remove (&page->frame->elem);
+		// free(page->frame);
 	}
 	else {
 		// Swapped anon page case

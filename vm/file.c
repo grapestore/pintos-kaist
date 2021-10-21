@@ -38,7 +38,7 @@ static bool
 file_backed_swap_in (struct page *page, void *kva) {
 	struct file_page *file_page UNUSED = &page->file;
 	if (file_page->file == NULL) return false;
-
+	printf("\n\ncheck : %p\n\n", page);
 	file_seek (file_page->file, file_page->ofs);
 	off_t read_size = file_read (file_page->file, kva, file_page->size);
 	if (read_size != file_page->size) return false;
@@ -70,7 +70,19 @@ file_backed_swap_out (struct page *page) {
 /* Destory the file backed page. PAGE will be freed by the caller. */
 static void
 file_backed_destroy (struct page *page) {
-	struct file_page *file_page UNUSED = &page->file;
+	// TODO: On mmap_exit sometimes empty file content
+	struct file_page *file_page = &page->file;
+	//if dirty, write back to file
+	if (pml4_is_dirty (thread_current() -> pml4, page -> va)){
+		file_seek (file_page->file, file_page->ofs);
+		file_write (file_page->file, page->va, file_page->size);
+	}
+	file_close (file_page->file);
+
+	if (page->frame != NULL) {
+		list_remove (&page->frame->elem);
+		free (page->frame);
+	}
 }
 
 
@@ -105,7 +117,6 @@ lazy_load_segment (struct page *page, void *aux) {
 		}
 	}
 	memset (page -> va + li -> page_read_bytes, 0, li -> page_zero_bytes);
-	file_close (li -> file);
 	free (li);
 	return true;
 }
@@ -170,6 +181,7 @@ do_munmap (void *addr) {
 				struct page* page = spt_find_page(&thread_current() -> spt, (void*) j);
 				spt_remove_page(&thread_current()->spt, page);
 				struct mmap_info * aux = (struct box *) page->uninit.aux;
+				bool swap_done = swap_out (page);
 			}
 			
 			list_remove(&mfi->elem);
