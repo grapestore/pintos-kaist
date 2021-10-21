@@ -361,9 +361,9 @@ void seek(int fd, unsigned position)
 	struct file *fileobj = find_file_by_fd(fd);
 	if(fileobj <= 2)
 		return;
-	//lock_acquire(&file_lock);
+	lock_acquire(&file_lock);
 	fileobj->pos = position;
-	//lock_release(&file_lock);
+	lock_release(&file_lock);
 	return;
 }
 

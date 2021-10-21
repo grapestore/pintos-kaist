@@ -177,13 +177,13 @@ do_munmap (void *addr) {
 			/* while 도 좋은방법이지만 page 접근이 완전 잘못될경우 page null이 아니라 find 도중*/
 			/* 0xccccccccccccccc같은 말도안돼는 주소를 찍는 경우가 있었다 */
 			/* 때문에 시작과 끝을 확실히 해서 그 범위만큼만 탐색해줌 */
-			for (uint64_t j = (uint64_t)addr; j<= mfi -> end; j += PGSIZE){
-				struct page* page = spt_find_page(&thread_current() -> spt, (void*) j);
-				spt_remove_page(&thread_current()->spt, page);
-				struct mmap_info * aux = (struct box *) page->uninit.aux;
-				bool swap_done = swap_out (page);
-			}
-			
+			/* 최종 gitbook에 안써있어서 spt리스트에서 제거 안해줌 */
+			// for (uint64_t j = (uint64_t)addr; j<= mfi -> end; j += PGSIZE){
+			// 	//printf("\n\ncheck\n\n");
+			// 	struct page* page = spt_find_page(&thread_current() -> spt, (void*) j);
+			// 	struct mmap_info * aux = (struct box *) page->uninit.aux;
+			// }
+			/* mmap된 파일 리스트에서만 제거해준다 */
 			list_remove(&mfi->elem);
 			free(mfi);
 			return;
