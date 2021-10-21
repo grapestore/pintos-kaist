@@ -415,6 +415,7 @@ static void*
 mmap(void *addr, size_t length, int writable, int fd, off_t offset)
 {
 	if(fd == 0 || fd == 1) return NULL;
+	
 	if (addr == 0 || (!is_user_vaddr(addr))) return NULL;
 	if ((uint64_t)addr % PGSIZE != 0) return NULL;
 	if (offset % PGSIZE != 0) return NULL;
@@ -424,7 +425,7 @@ mmap(void *addr, size_t length, int writable, int fd, off_t offset)
 		if (spt_find_page (&thread_current() -> spt, (void*) i)!=NULL) return NULL;
 	}
 	if (length == 0) return NULL;
-
+	
 	struct file* file = find_file_by_fd(fd);
 	if(file == NULL) return NULL;
 	return do_mmap (addr, length, writable, file, offset);

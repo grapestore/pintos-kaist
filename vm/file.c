@@ -18,11 +18,10 @@ static const struct page_operations file_ops = {
 	.type = VM_FILE,
 };
 
-struct list* lru;
+
 /* The initializer of file vm */
 void
 vm_file_init (void) {
-	list_init(&lru);
 }
 
 /* Initialize the file backed page */
@@ -38,12 +37,34 @@ file_backed_initializer (struct page *page, enum vm_type type, void *kva) {
 static bool
 file_backed_swap_in (struct page *page, void *kva) {
 	struct file_page *file_page UNUSED = &page->file;
+	if (file_page->file == NULL) return false;
+
+	file_seek (file_page->file, file_page->ofs);
+	off_t read_size = file_read (file_page->file, kva, file_page->size);
+	if (read_size != file_page->size) return false;
+	if (read_size < PGSIZE)
+		memset (kva + read_size, 0, PGSIZE - read_size);
+
+	return true;
 }
 
 /* Swap out the page by writeback contents to the file. */
 static bool
 file_backed_swap_out (struct page *page) {
 	struct file_page *file_page UNUSED = &page->file;
+	struct thread *curr = thread_current ();
+	
+	if (pml4_is_dirty (curr->pml4, page->va)) {
+		file_seek (file_page->file, file_page->ofs);
+		file_write (file_page->file, page->va, file_page->size);
+		pml4_set_dirty (curr->pml4, page->va, false);
+	}
+
+	// Set "not present" to page, and clear.
+	pml4_clear_page (curr->pml4, page->va);
+	page->frame = NULL;
+
+	return true;
 }
 
 /* Destory the file backed page. PAGE will be freed by the caller. */
@@ -99,17 +120,18 @@ do_mmap (void *addr, size_t length, int writable,
 			void * ori_addr = addr;
 			size_t read_bytes = length > file_length(file) ? file_length(file) : length;
     	size_t zero_bytes = PGSIZE - read_bytes;
-
-			while (read_bytes > 0 || zero_bytes > 0){
+			
+			while (read_bytes > 0){
 				size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
 				size_t page_zero_bytes = PGSIZE - page_read_bytes;
-
+				//printf("\n\ncheck : %ld \n\n", read_bytes);
 				struct mmap_info *aux = calloc(sizeof(struct mmap_info),1);
 				
 				aux->file = file_reopen(file);
 				aux->offset = read_ofs;
 				aux->read_bytes = page_read_bytes;
 				aux->zero_bytes = page_zero_bytes;
+				//printf("\n\n%p\n\n", aux->file);
 				if(!vm_alloc_page_with_initializer (VM_FILE, (void*) ((uint64_t) addr), writable, lazy_load_segment, (void*) aux))
 					return;
 				read_bytes -= page_read_bytes;

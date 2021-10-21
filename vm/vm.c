@@ -14,6 +14,8 @@
  * intialize codes. */
 
 static struct lock spt_kill_lock;
+struct list* lru_list;
+static struct lock clock_lock;
 
 void
 vm_init (void) {
@@ -26,6 +28,8 @@ vm_init (void) {
 	/* DO NOT MODIFY UPPER LINES. */
 	/* TODO: Your code goes here. */
 	lock_init(&spt_kill_lock);
+	list_init(&lru_list);
+	lock_init (&clock_lock);
 }
 
 /* Get the type of the page. This function is useful if you want to know the
@@ -64,13 +68,15 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 		 * TODO: and then create "uninit" page struct by calling uninit_new. You
 		 * TODO: should modify the field after calling the uninit_new. */
 		ASSERT(type != VM_UNINIT);
-		struct page* page = calloc (sizeof (struct page),1);
+		struct page* page = malloc (sizeof (struct page));
 		//printf("\n\n%p\n\n", page);
+		if(page == NULL) return false;
 		/* TODO: Insert the page into the spt. */
 		if (VM_TYPE(type) == VM_ANON){
 			uninit_new (page, upage, init, type, aux, anon_initializer);
 		}
 		else if (VM_TYPE(type) == VM_FILE){
+			//printf("\n\n%p\n\n",page);
 			uninit_new (page, upage, init, type, aux, file_map_initializer);
 		}
 
@@ -107,12 +113,36 @@ spt_remove_page (struct supplemental_page_table *spt, struct page *page) {
 	return true;
 }
 
+static struct list_elem *
+list_next_cycle (struct list *lst, struct list_elem *elem) {
+      struct list_elem *cand_elem = elem;
+      if (cand_elem == list_back (lst))
+	    	cand_elem = list_front (lst);
+      else
+	    	cand_elem = list_next (cand_elem);
+      return cand_elem;
+}
+
 /* Get the struct frame, that will be evicted. */
 static struct frame *
 vm_get_victim (void) {
 	struct frame *victim = NULL;
+	struct list_elem *cand_elem = NULL;
+	struct thread *curr = thread_current();
 	 /* TODO: The policy for eviction is up to you. */
-
+	lock_acquire (&clock_lock);
+	if(!list_empty(&lru_list)){
+		cand_elem = list_front(&lru_list);
+	}
+	while(cand_elem != NULL){
+		victim = list_entry(cand_elem, struct frame, elem);
+		if (!pml4_is_accessed (curr->pml4, victim->page->va))
+		    break; // Found!
+		pml4_set_accessed (curr->pml4, victim->page->va, false);
+		cand_elem = list_next_cycle(&lru_list, cand_elem);
+	}
+	list_remove (cand_elem);
+	lock_release (&clock_lock);
 	return victim;
 }
 
@@ -120,10 +150,20 @@ vm_get_victim (void) {
  * Return NULL on error.*/
 static struct frame *
 vm_evict_frame (void) {
-	struct frame *victim UNUSED = vm_get_victim ();
+	/* victime page search through access bit */
+	struct frame *victim = vm_get_victim ();
 	/* TODO: swap out the victim and return the evicted frame. */
+	if (victim == NULL) return NULL;
 
-	return NULL;
+	struct page *page = victim->page;
+	bool swap_done = swap_out (page);
+	if (!swap_done) PANIC("Swap is full!\n");
+
+	/* clear frame */
+	victim->page = NULL;
+	memset (victim->kva, 0, PGSIZE);
+
+	return victim;
 }
 
 /* palloc() and get frame. If there is no available page, evict the page
@@ -135,6 +175,11 @@ vm_get_frame (void) {
 	struct frame * frame = malloc (sizeof (struct frame));
 	frame -> kva = palloc_get_page (PAL_USER);
 	frame -> page = NULL;
+
+	if(frame->kva == NULL){
+		free(frame);
+		frame = vm_evict_frame();
+	}
 
 	ASSERT (frame->kva != NULL);
 	return frame;
@@ -211,6 +256,10 @@ vm_do_claim_page (struct page *page) {
 	ASSERT (page != NULL);
 	frame->page = page;
 	page->frame = frame;
+
+	/* clock 알고리즘을 이용하여 victim page찾을 예정 */
+	/* pm에 올라간다는건 희생될 페이지들의 대상이 된다. */
+	list_push_back(&lru_list, &frame->elem);
 
 	/* TODO: Insert page table entry to map page's VA to frame's PA. */
 	if (!pml4_set_page (curr -> pml4, page -> va, frame->kva, page -> writable))
