@@ -294,7 +294,8 @@ int read (int fd , void *buffer, unsigned size)
 	int length;
 	struct thread *cur = thread_current();
 	struct file *fileobj = find_file_by_fd(fd);
-	
+	// printf("\n\nfileobj : %p\n\n", fileobj);
+	// printf("\n\ncontents : %d\n\n", fileobj->pos);
 	if(fileobj == NULL)
 		return -1;
 	

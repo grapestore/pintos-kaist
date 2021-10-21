@@ -18,10 +18,11 @@ static const struct page_operations file_ops = {
 	.type = VM_FILE,
 };
 
-
+struct list* lru;
 /* The initializer of file vm */
 void
 vm_file_init (void) {
+	list_init(&lru);
 }
 
 /* Initialize the file backed page */
@@ -119,6 +120,8 @@ do_mmap (void *addr, size_t length, int writable,
 			
 			struct mmap_file_info* mfi = malloc (sizeof (struct mmap_file_info));
 			mfi->mapid = ori_addr;
+			/* 그냥 파일 length 넣으면 안됌 mmap도 page size단위로 끊어줘야 되기 때문에 그냥 넣으면*/
+			/* 마지막 page중간으로 찍어서 제대로 접근을 할수가 없음 */
 			mfi->end = (uint64_t) pg_round_down((uint64_t) ori_addr + read_bytes -1);
 			//printf("\n\ncheck : %p thread :%s \n\n", mfi->mapid, thread_current()->name);
 			list_push_back(&thread_current()->mmap_file_list, &mfi->elem);
@@ -138,10 +141,15 @@ do_munmap (void *addr) {
 		struct mmap_file_info* mfi = list_entry (i, struct mmap_file_info, elem);
 		//printf("\n\ncheck : %p thread :%s \n\n", mfi->mapid, thread_current()->name);
 		if (mfi -> mapid == (uint64_t) addr){
+			/* while 도 좋은방법이지만 page 접근이 완전 잘못될경우 page null이 아니라 find 도중*/
+			/* 0xccccccccccccccc같은 말도안돼는 주소를 찍는 경우가 있었다 */
+			/* 때문에 시작과 끝을 확실히 해서 그 범위만큼만 탐색해줌 */
 			for (uint64_t j = (uint64_t)addr; j<= mfi -> end; j += PGSIZE){
 				struct page* page = spt_find_page(&thread_current() -> spt, (void*) j);
 				spt_remove_page(&thread_current()->spt, page);
+				struct mmap_info * aux = (struct box *) page->uninit.aux;
 			}
+			
 			list_remove(&mfi->elem);
 			free(mfi);
 			return;

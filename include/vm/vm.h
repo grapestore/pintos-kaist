@@ -44,7 +44,10 @@ struct thread;
 struct page {
 	const struct page_operations *operations;
 	void *va;              /* Address in terms of user space */
+	void *kva;  					/* address of pysical mem*/
 	struct frame *frame;   /* Back reference for frame */
+	struct thread *thread;  /* reference to the thread to which it belongs */
+	struct list_elem lru;   /* list_elem for lur algorithm list */
 
 	/* Your implementation */
 	struct hash_elem hash_elem;
