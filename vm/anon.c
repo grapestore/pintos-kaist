@@ -18,7 +18,7 @@ static const struct page_operations anon_ops = {
 	.destroy = anon_destroy,
 	.type = VM_ANON,
 };
-
+ 
 static const struct page_operations anon_stack_ops = {
 	.swap_in = anon_swap_in,
 	.swap_out = anon_swap_out,
