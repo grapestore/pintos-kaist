@@ -99,35 +99,6 @@ struct mmap_file_info{
 };
 
 static bool
-lazy_load_segment (struct page *page, void *aux) {
-	/* TODO: Load the segment from the file */
-	/* TODO: This called when the first page fault occurs on address VA. */
-	/* TODO: VA is available when calling this function. */
-	/* Load the segment from the file */
-	/* This called when the first page fault occurs on address VA. */
-	/* VA is available when calling this function. */
-	struct mmap_info* li = (struct mmap_info *) aux;
-	if (page == NULL) return false;
-	ASSERT(li ->read_bytes <=PGSIZE);
-	ASSERT(li ->zero_bytes <= PGSIZE);
-	
-	/* Load this page. */
-	if (li -> read_bytes > 0) {
-		file_seek (li -> file, li -> offset);
-		if (file_read (li -> file, page -> va, li -> read_bytes) != (off_t) li -> read_bytes) {
-			vm_dealloc_page (page);
-			free (li);
-			return false;
-		}
-	}
-	
-	memset (page -> va + li -> read_bytes, 0, li -> zero_bytes);
-	
-	free (li);
-	return true;
-}
-
-static bool
 lazy_load_file (struct page* page, void* aux){
 	struct mmap_info* mi = (struct mmap_info*) aux;
 	file_seek (mi->file, mi->offset);
@@ -147,29 +118,22 @@ do_mmap (void *addr, size_t length, int writable,
 		struct file *file, off_t offset) {
 			/* length는 pgsize의 배수여야 한다.*/
 
-			off_t read_ofs = offset;
 			void * ori_addr = addr;
 			size_t read_bytes = length > file_length(file) ? file_length(file) : length;
-    	size_t zero_bytes = PGSIZE - read_bytes;
-			
 			while (read_bytes > 0){
 				size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
-				size_t page_zero_bytes = PGSIZE - page_read_bytes;
 				//printf("\n\ncheck : %ld \n\n", read_bytes);
 				struct mmap_info *aux = calloc(sizeof(struct mmap_info),1);
 				
 				aux->file = file_reopen(file);
-				
-				aux->offset = read_ofs;
+				aux->offset = offset;
 				aux->read_bytes = page_read_bytes;
-				aux->zero_bytes = page_zero_bytes;
 				//printf("\n\n%p\n\n", aux->file);
 				
 				if(!vm_alloc_page_with_initializer (VM_FILE, (void*) ((uint64_t) addr), writable, lazy_load_file, aux))
 					return;
 				read_bytes -= page_read_bytes;
-				zero_bytes -= page_zero_bytes;
-				read_ofs += page_read_bytes;
+				offset += page_read_bytes;
 				addr += PGSIZE;
 			}
 			
@@ -200,6 +164,7 @@ do_munmap (void *addr) {
 			/* 0xccccccccccccccc같은 말도안돼는 주소를 찍는 경우가 있었다 */
 			/* 때문에 시작과 끝을 확실히 해서 그 범위만큼만 탐색해줌 */
 			/* 최종 gitbook에 안써있어서 spt리스트에서 제거 안해줌 */
+			/* munmap 된 page를 프로세스 전체 page리스트에서 제거 해야하는가? */
 			// for (uint64_t j = (uint64_t)addr; j<= mfi -> end; j += PGSIZE){
 			// 	//printf("\n\ncheck\n\n");
 			// 	struct page* page = spt_find_page(&thread_current() -> spt, (void*) j);
@@ -207,17 +172,14 @@ do_munmap (void *addr) {
 			// }
 			/* mmap된 파일 리스트에서만 제거해준다 */
 			struct page* page = spt_find_page(&thread_current() -> spt, addr);
+			struct file_page *file_page UNUSED = &page->file;
 			list_remove(&mfi->elem);
-			struct file_page *file_page = &page->file;
-			//if dirty, write back to file
-			if (pml4_is_dirty (thread_current() -> pml4, page -> va)){
-				/* file size 잘못들어가있음 어디서 잘못들어간거지 ?*/
-				//printf("\n\ncheck: %p\n\n", file_page->size);
+			if (pml4_is_dirty (thread_current()->pml4, page->va)) {
 				file_seek (file_page->file, file_page->ofs);
 				file_write (file_page->file, page->va, file_page->size);
+				pml4_set_dirty (thread_current()->pml4, page->va, false);
 			}
-			free(mfi);
-			return;
+			pml4_clear_page(thread_current()->pml4, page->va);
 		}
 	}
 }

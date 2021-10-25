@@ -139,7 +139,10 @@ page_fault (struct intr_frame *f) {
 	not_present = (f->error_code & PF_P) == 0;
 	write = (f->error_code & PF_W) != 0;
 	user = (f->error_code & PF_U) != 0;
-	//if(!is_user_vaddr(fault_addr) || fault_addr==NULL) exit(-1);
+
+	if(user){
+		curr->saved_sp = f->rsp;
+	}
 	
 #ifdef VM
 	/* For project 3 and later. */
@@ -151,7 +154,10 @@ page_fault (struct intr_frame *f) {
 	if (user)
 	{
 		curr->exit_status = -1;
+		f->cs = SEL_UCSEG;
 	}
+
+	page_fault_cnt++;
 	/* If the fault is true fault, show info and exit. */
 	/* kill 될때 print 되서 없애줘야됨 */
 	// printf ("Page fault at %p: %s error %s page in %s context.\n",

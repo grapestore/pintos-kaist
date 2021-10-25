@@ -77,6 +77,7 @@ syscall_init (void) {
 void
 syscall_handler (struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
+	thread_current()->saved_sp = f->rsp;
 	switch (f->R.rax)
 	{
 	case SYS_HALT:
@@ -150,14 +151,20 @@ void exit(int status)
 bool create(const char *file, unsigned initial_size)
 {
 	check_address(file);
+	lock_acquire(&file_lock);
+	bool success = filesys_create(file, initial_size);
+	lock_release(&file_lock);
 	
-	return filesys_create(file, initial_size);
+	return success;
 }
 
 bool remove(const char *file)
 {
 	check_address(file);
-	return filesys_remove(file);
+	lock_acquire(&file_lock);
+	bool success = filesys_remove(file);
+	lock_release(&file_lock);
+	return success;
 }
 
 int

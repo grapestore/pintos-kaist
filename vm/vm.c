@@ -15,6 +15,7 @@
 
 static struct lock spt_kill_lock;
 struct list* lru_list;
+static struct list_elem *clock_elem;
 static struct lock clock_lock;
 
 void
@@ -29,6 +30,7 @@ vm_init (void) {
 	/* TODO: Your code goes here. */
 	lock_init(&spt_kill_lock);
 	list_init(&lru_list);
+	clock_elem = NULL;
 	lock_init (&clock_lock);
 }
 
@@ -126,10 +128,10 @@ list_next_cycle (struct list *lst, struct list_elem *elem) {
 static struct frame *
 vm_get_victim (void) {
 	struct frame *victim = NULL;
-	struct list_elem *cand_elem = NULL;
 	struct thread *curr = thread_current();
 	 /* TODO: The policy for eviction is up to you. */
 	lock_acquire (&clock_lock);
+	struct list_elem *cand_elem = clock_elem;
 	if(!list_empty(&lru_list)){
 		cand_elem = list_front(&lru_list);
 	}
@@ -140,6 +142,7 @@ vm_get_victim (void) {
 		pml4_set_accessed (curr->pml4, victim->page->va, false);
 		cand_elem = list_next_cycle(&lru_list, cand_elem);
 	}
+	clock_elem = list_next_cycle (&lru_list, cand_elem);
 	list_remove (cand_elem);
 	lock_release (&clock_lock);
 	return victim;
@@ -217,7 +220,7 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
 	if (is_kernel_vaddr (addr) && user) return false;
-	void *cur_stack_top = pg_round_down (f->rsp);
+	void *cur_stack_top = pg_round_down (curr->saved_sp);
 	if (write && (cur_stack_top - PGSIZE <= addr &&
 	      (uintptr_t) addr < USER_STACK)) {
 	  vm_stack_growth (addr);
