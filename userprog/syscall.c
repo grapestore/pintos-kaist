@@ -170,12 +170,14 @@ bool remove(const char *file)
 int
 open (const char *file) {
 	check_address(file);
-	
+	//printf("\n%s\n",file);
 	lock_acquire(&file_lock);
 	struct file *fileobj = filesys_open(file);
 	lock_release(&file_lock);
-	if (fileobj == NULL)
+	if (fileobj == NULL){
 		return -1;
+	}
+		
 	
 	int fd = add_file_to_fdt(fileobj);
 	
@@ -209,12 +211,12 @@ void close(int fd)
 
 /*      table 에서 삭제           */
 	remove_file_from_fdt(fd);
-	lock_acquire(&file_lock);
+	//lock_acquire(&file_lock);
 	if(objfile->dupCount == 0)
 		file_close(objfile);
 	else if(objfile->dupCount > 0)
 		objfile->dupCount--;
-	lock_release(&file_lock);
+	//lock_release(&file_lock);
 	return;
 }
 
@@ -339,6 +341,7 @@ int read (int fd , void *buffer, unsigned size)
 int write(int fd, const void *buffer, unsigned size)
 {
 	check_address(buffer);
+	if (size==0) return 0;
 	int length;
 	struct thread *cur = thread_current();
 	struct file *fileobj = find_file_by_fd(fd);

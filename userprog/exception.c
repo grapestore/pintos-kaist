@@ -133,7 +133,8 @@ page_fault (struct intr_frame *f) {
 	/* Turn interrupts back on (they were only off so that we could
 	   be assured of reading CR2 before it changed). */
 	intr_enable ();
-
+	// if(fault_addr < 0x10)
+	// 	printf("\ncheck : %p \n", fault_addr);
 
 	/* Determine cause. */
 	not_present = (f->error_code & PF_P) == 0;
@@ -154,7 +155,7 @@ page_fault (struct intr_frame *f) {
 	if (user)
 	{
 		curr->exit_status = -1;
-		f->cs = SEL_UCSEG;
+		//mf->cs = SEL_UCSEG;
 	}
 
 	page_fault_cnt++;
