@@ -92,10 +92,8 @@ file_backed_destroy (struct page *page) {
 
 struct mmap_file_info{
 	uint64_t mapid;
-	uint64_t end;
 	struct list_elem elem;
 	struct file* file;
-	struct list* vme_list;
 };
 
 static bool
@@ -139,9 +137,6 @@ do_mmap (void *addr, size_t length, int writable,
 			
 			struct mmap_file_info* mfi = malloc (sizeof (struct mmap_file_info));
 			mfi->mapid = ori_addr;
-			/* 그냥 파일 length 넣으면 안됌 mmap도 page size단위로 끊어줘야 되기 때문에 그냥 넣으면*/
-			/* 마지막 page중간으로 찍어서 제대로 접근을 할수가 없음 */
-			mfi->end = (uint64_t) pg_round_down((uint64_t) ori_addr + read_bytes -1);
 			//printf("\n\ncheck : %p thread :%s \n\n", mfi->mapid, thread_current()->name);
 			list_push_back(&thread_current()->mmap_file_list, &mfi->elem);
 			
@@ -160,16 +155,6 @@ do_munmap (void *addr) {
 		struct mmap_file_info* mfi = list_entry (i, struct mmap_file_info, elem);
 		//printf("\n\ncheck : %p thread :%s \n\n", mfi->mapid, thread_current()->name);
 		if (mfi -> mapid == (uint64_t) addr){
-			/* while 도 좋은방법이지만 page 접근이 완전 잘못될경우 page null이 아니라 find 도중*/
-			/* 0xccccccccccccccc같은 말도안돼는 주소를 찍는 경우가 있었다 */
-			/* 때문에 시작과 끝을 확실히 해서 그 범위만큼만 탐색해줌 */
-			/* 최종 gitbook에 안써있어서 spt리스트에서 제거 안해줌 */
-			/* munmap 된 page를 프로세스 전체 page리스트에서 제거 해야하는가? */
-			// for (uint64_t j = (uint64_t)addr; j<= mfi -> end; j += PGSIZE){
-			// 	//printf("\n\ncheck\n\n");
-			// 	struct page* page = spt_find_page(&thread_current() -> spt, (void*) j);
-			// 	struct mmap_info * aux = (struct box *) page->uninit.aux;
-			// }
 			/* mmap된 파일 리스트에서만 제거해준다 */
 			struct page* page = spt_find_page(&thread_current() -> spt, addr);
 			struct file_page *file_page UNUSED = &page->file;
@@ -180,6 +165,7 @@ do_munmap (void *addr) {
 				pml4_set_dirty (thread_current()->pml4, page->va, false);
 			}
 			pml4_clear_page(thread_current()->pml4, page->va);
+			return;
 		}
 	}
 }

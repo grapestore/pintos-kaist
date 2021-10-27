@@ -393,7 +393,12 @@ int wait (tid_t tid)
 
 tid_t fork(const char *thread_name, struct intr_frame *f)
 {
-	return process_fork(thread_name, f);
+	/* 왜 성고 실패가 반복되냐 생각해봤는데 */
+	/* fork, mmap또한 파일이 읽고 수정중인데 작동되는게 아니라고 생각된다. */
+	lock_acquire(&file_lock);
+	tid_t tid = process_fork(thread_name, f);
+	lock_release(&file_lock);
+	return tid;
 }
 
 int dup2(int oldfd, int newfd)
@@ -441,11 +446,16 @@ mmap(void *addr, size_t length, int writable, int fd, off_t offset)
 	
 	struct file* file = find_file_by_fd(fd);
 	if(file == NULL) return NULL;
-	return do_mmap (addr, length, writable, file, offset);
+	lock_acquire(&file_lock);
+	void* target_address = do_mmap (addr, length, writable, file, offset);
+	lock_release(&file_lock);
+	return target_address;
 	
 }
 
 static void
 munmap(void* addr){
+	lock_acquire(&file_lock);
 	do_munmap(addr);
+	lock_release(&file_lock);
 }
