@@ -346,7 +346,7 @@ process_exit (void) {
 	sema_down(&cur->free_sema);
 	#ifdef EFILESYS
 
-	//dir_close(thread_current()->cur_dir); //! ADD : open_cnt가 0일때만 inode까지 free
+	dir_close(thread_current()->cur_dir); //! ADD : open_cnt가 0일때만 inode까지 free
 	
 	#endif
 }
