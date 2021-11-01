@@ -23,6 +23,10 @@
         "vm.h": "c",
         "palloc.h": "c",
         "vaddr.h": "c",
-        "pte.h": "c"
+        "pte.h": "c",
+        "disk.h": "c",
+        "fat.h": "c",
+        "inode.h": "c",
+        "directory.h": "c"
     }
 }

@@ -269,7 +269,7 @@ process_exec (void *f_name) {
 	process_cleanup ();
 	supplemental_page_table_init (&thread_current () -> spt);
 	/* And then load the binary */
-	success = load (file_name, &_if);
+	thread_current()->is_load = success = load (file_name, &_if);
 	
 	/* If load failed, quit. */
 	if (!success)
@@ -344,7 +344,11 @@ process_exit (void) {
 
 	sema_up(&cur->wait_sema);
 	sema_down(&cur->free_sema);
+	#ifdef EFILESYS
+
+	//dir_close(thread_current()->cur_dir); //! ADD : open_cnt가 0일때만 inode까지 free
 	
+	#endif
 }
 
 /* Free the current process's resources. */

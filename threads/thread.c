@@ -14,6 +14,7 @@
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
+#include "filesys/directory.h"
 
 /* Random value for struct thread's `magic' member.
    Used to detect stack overflow.  See the big comment at the top
@@ -128,6 +129,9 @@ void thread_init(void)
 		initial_thread->nice = 0;
 		initial_thread->priority = PRI_MAX;
 	}
+	#ifdef EFILESYS
+		initial_thread->cur_dir = NULL;
+	#endif
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -204,7 +208,11 @@ tid_t thread_create(const char *name, int priority,
 
 	/* Initialize thread. */
 	init_thread(t, name, priority);
+	#ifdef EFILESYS
 
+	
+
+	#endif
 	// 2-4 File descriptor
 	//t->fdTable = palloc_get_page(PAL_ZERO); // multi-oom : need more pages to accomodate 10 stacks of 126 opens
 	t->fdTable = palloc_get_multiple(PAL_ZERO, FDT_PAGES);
@@ -225,7 +233,12 @@ tid_t thread_create(const char *name, int priority,
 		t->priority = PRI_MAX; // priority = PRI_MAX – (recent_cpu / 4) – (nice * 2)
 	}
 	tid = t->tid = allocate_tid();
-
+	if(thread_current()->cur_dir != NULL)
+	{
+			t->cur_dir = dir_reopen(thread_current()->cur_dir); //! ADD : 부모 디렉토리를 자식으로
+	}
+	t->is_load = 0;
+	t->is_exit = 0;
 	// 2-3 Parent child
 	struct thread *cur = thread_current();
 	list_push_back(&cur->child_list, &t->child_elem); // [parent] add new child to child_list
